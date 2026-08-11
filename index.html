@@ -96,6 +96,12 @@
   li.serie .kopfz .nam{flex:1}
 
   .leer{padding:36px 2px;color:var(--grau)}
+  #notizfeld{
+    width:100%;min-height:calc(100vh - 300px);font-size:17px;line-height:1.5;
+    background:#fff;border:1px solid var(--linie);border-radius:5px;padding:14px;
+    outline:none;resize:vertical;
+  }
+  #notizfeld:focus{border-color:var(--tinte)}
   .leer b{display:block;color:var(--tinte);font-weight:normal;font-size:21px;margin-bottom:4px}
   .zurueck{background:none;border:0;color:var(--grau);cursor:pointer;padding:0 0 10px;font-size:16px}
   .titelzeile{display:flex;align-items:center;gap:10px;margin-bottom:8px}
@@ -201,6 +207,7 @@
     .leiste{position:static;padding:14px 34px 20px;flex:0 0 auto}
     .leiste-inner{max-width:none}
     .status{bottom:auto;top:16px;right:24px;left:auto;text-align:right}
+    #notizfeld{min-height:calc(100vh - 190px)}
     h2:first-child{margin-top:0}
   }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -258,11 +265,11 @@ const DOC_KEY='todo.doc.v1', CFG_KEY='todo.cfg.v1';
 
 const FARBEN=['#B03A2E','#CA6F1E','#B7950B','#1E8449','#0E8074','#1F6FB2','#34495E','#6C3483','#A5468B','#5D6D7E'];
 
-let doc={bereiche:[],aufgaben:[],vorlagen:[]};
+let doc={bereiche:[],aufgaben:[],vorlagen:[],notiz:{text:'',ts:0}};
 let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute'};
-let ansicht='heute', offenerBereich=null;
+let ansicht='heute', offenerBereich=null, notizUhr=null;
 
-try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[]}; }catch(e){}
+try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[],notiz:(d.notiz&&typeof d.notiz==='object')?d.notiz:{text:'',ts:0}}; }catch(e){}
 try{ const c=JSON.parse(LS.getItem(CFG_KEY)); if(c&&typeof c==='object') cfg=Object.assign(cfg,c); }catch(e){}
 
 const $=id=>document.getElementById(id);
@@ -407,7 +414,7 @@ function rhythmusText(r){
 }
 
 /* ============ Ansichten ============ */
-const REITER=[['heute','Heute'],['alle','Alle'],['bereiche','Bereiche'],['serien','Serien'],['erledigt','Erledigt']];
+const REITER=[['heute','Heute'],['alle','Alle'],['bereiche','Bereiche'],['notizen','Notizen'],['serien','Serien'],['erledigt','Erledigt']];
 
 function zeichneNav(){
   $('nav').innerHTML=REITER.map(([k,l])=>
@@ -430,6 +437,7 @@ function zeichneSeite(){
      <div class="s-nav">
        ${eintrag('heute','Heute',heuteN,null)}
        ${eintrag('alle','Alle',offene.length,null)}
+       ${eintrag('notizen','Notizen',null,null)}
        ${eintrag('serien','Serien',aktiv(doc.vorlagen).length,null)}
        ${eintrag('erledigt','Erledigt',null,null)}
      </div>
@@ -621,6 +629,28 @@ function zeichnen(){
     c.innerHTML=h;
     c.querySelectorAll('li.serie').forEach(li=>li.onclick=()=>blattSerie(doc.vorlagen.find(v=>v.id===li.dataset.id)));
     $('neu-serie').onclick=()=>blattSerie(null);
+  }
+
+  else if(ansicht==='notizen'){
+    const feld=$('notizfeld');
+    if(feld&&document.activeElement===feld){ zeichneZiel(); return; }
+    c.innerHTML=`<textarea id="notizfeld" placeholder="Hier ist Platz für alles, was keine Aufgabe ist – Telefonnummern, Ideen, Einkaufszettel, Gedanken.&#10;&#10;Der Text bleibt stehen, bis du ihn selbst löschst."></textarea>
+      <p class="hinweis" id="notizstand">Wird automatisch gespeichert.</p>`;
+    const t=$('notizfeld');
+    t.value=(doc.notiz&&doc.notiz.text)||'';
+    t.addEventListener('input',()=>{
+      clearTimeout(notizUhr);
+      $('notizstand').textContent='Wird gespeichert …';
+      notizUhr=setTimeout(()=>{
+        doc.notiz={text:t.value,ts:jetzt()};
+        sichern(); planeSync();
+        $('notizstand').textContent='Gespeichert um '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+      },700);
+    });
+    t.addEventListener('blur',()=>{
+      clearTimeout(notizUhr);
+      if(t.value!==((doc.notiz&&doc.notiz.text)||'')){ doc.notiz={text:t.value,ts:jetzt()}; sichern(); planeSync(); }
+    });
   }
 
   else if(ansicht==='erledigt'){
@@ -882,8 +912,9 @@ async function sync(still){
     doc.bereiche=verschmelze(doc.bereiche,fern.bereiche);
     doc.aufgaben=verschmelze(doc.aufgaben,fern.aufgaben);
     doc.vorlagen=verschmelze(doc.vorlagen,fern.vorlagen);
+    if(fern.notiz&&typeof fern.notiz==='object'&&(fern.notiz.ts||0)>((doc.notiz&&doc.notiz.ts)||0)) doc.notiz=fern.notiz;
     serienPruefen(); sichern(); zeichnen();
-    const fernJson=JSON.stringify({bereiche:fern.bereiche||[],aufgaben:fern.aufgaben||[],vorlagen:fern.vorlagen||[]});
+    const fernJson=JSON.stringify({bereiche:fern.bereiche||[],aufgaben:fern.aufgaben||[],vorlagen:fern.vorlagen||[],notiz:fern.notiz||{text:'',ts:0}});
     if(JSON.stringify(doc)!==fernJson) await rpc('sync_push',{p_code:cfg.code,p_doc:doc});
     if(!still) melde('Abgeglichen um '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),2500);
   }catch(e){
@@ -941,6 +972,7 @@ $('datei').onchange=e=>{
       doc.bereiche=verschmelze(doc.bereiche,n.bereiche);
       doc.aufgaben=verschmelze(doc.aufgaben,n.aufgaben);
       doc.vorlagen=verschmelze(doc.vorlagen,n.vorlagen);
+      if(n.notiz&&typeof n.notiz==='object'&&(n.notiz.ts||0)>((doc.notiz&&doc.notiz.ts)||0)) doc.notiz=n.notiz;
       blattZu(); geaendert(); melde('Daten übernommen.',2500);
     }catch(err){ melde('Diese Datei passt nicht.',3000); }
   };

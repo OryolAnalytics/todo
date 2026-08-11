@@ -102,6 +102,24 @@
     outline:none;resize:vertical;
   }
   #notizfeld:focus{border-color:var(--tinte)}
+
+  /* Dateien */
+  .ablage{
+    border:1.5px dashed var(--linie);border-radius:8px;padding:26px 18px;text-align:center;
+    cursor:pointer;margin-bottom:18px;transition:border-color .15s,background .15s;
+  }
+  .ablage:hover,.ablage.drueber{border-color:var(--tinte);background:var(--feld)}
+  .ablage b{display:block;font-weight:normal;font-size:20px;margin-bottom:3px}
+  .ablage span{font-size:14px;color:var(--grau)}
+  .ladezeile{padding:10px 2px;border-bottom:1px solid var(--linie);font-size:14px;color:var(--grau)}
+  .balken{height:4px;background:var(--feld);border-radius:2px;margin-top:6px;overflow:hidden}
+  .balken i{display:block;height:100%;background:var(--tinte);width:0;transition:width .2s}
+  ul.dateiliste li{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--linie)}
+  .d-mitte{flex:1;min-width:0}
+  .d-name{word-break:break-all}
+  .d-hol{background:none;border:1px solid var(--linie);border-radius:4px;padding:6px 13px;
+         font-size:15px;cursor:pointer;color:var(--tinte);flex:0 0 auto}
+  .d-hol:hover{border-color:var(--tinte)}
   .leer b{display:block;color:var(--tinte);font-weight:normal;font-size:21px;margin-bottom:4px}
   .zurueck{background:none;border:0;color:var(--grau);cursor:pointer;padding:0 0 10px;font-size:16px}
   .titelzeile{display:flex;align-items:center;gap:10px;margin-bottom:8px}
@@ -252,6 +270,7 @@
 <div class="schleier" id="schleier"></div>
 <div class="blatt" id="blatt"></div>
 <input type="file" id="datei" accept="application/json" hidden>
+<input type="file" id="dateiwahl" multiple hidden>
 
 <script>
 "use strict";
@@ -265,11 +284,11 @@ const DOC_KEY='todo.doc.v1', CFG_KEY='todo.cfg.v1';
 
 const FARBEN=['#B03A2E','#CA6F1E','#B7950B','#1E8449','#0E8074','#1F6FB2','#34495E','#6C3483','#A5468B','#5D6D7E'];
 
-let doc={bereiche:[],aufgaben:[],vorlagen:[],notiz:{text:'',ts:0}};
+let doc={bereiche:[],aufgaben:[],vorlagen:[],notiz:{text:'',ts:0},dateien:[]};
 let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute'};
 let ansicht='heute', offenerBereich=null, notizUhr=null;
 
-try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[],notiz:(d.notiz&&typeof d.notiz==='object')?d.notiz:{text:'',ts:0}}; }catch(e){}
+try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[],notiz:(d.notiz&&typeof d.notiz==='object')?d.notiz:{text:'',ts:0},dateien:d.dateien||[]}; }catch(e){}
 try{ const c=JSON.parse(LS.getItem(CFG_KEY)); if(c&&typeof c==='object') cfg=Object.assign(cfg,c); }catch(e){}
 
 const $=id=>document.getElementById(id);
@@ -413,8 +432,101 @@ function rhythmusText(r){
   return n===1?'jährlich':`alle ${n} Jahre`;
 }
 
+/* ============ Dateien (Supabase Storage) ============ */
+const LEBENSDAUER=24*60*60*1000;   // 24 Stunden
+const EIMER='dateien';
+let ladeStand={};                   // pfad -> Prozent
+
+function speicherBereit(){ return !!(cfg.url&&cfg.key&&cfg.code); }
+function basisUrl(){ return cfg.url.replace(/\/+$/,''); }
+function oeffentlicheUrl(pfad){ return basisUrl()+'/storage/v1/object/public/'+EIMER+'/'+pfad; }
+
+function groesseText(b){
+  if(b<1024) return b+' B';
+  if(b<1024*1024) return (b/1024).toFixed(0)+' KB';
+  return (b/1048576).toFixed(1).replace('.',',')+' MB';
+}
+function restText(hoch){
+  const rest=LEBENSDAUER-(jetzt()-hoch);
+  if(rest<=0) return 'läuft ab';
+  const std=Math.floor(rest/3600000), min=Math.round((rest%3600000)/60000);
+  return std>0?`noch ${std} Std.`:`noch ${min} Min.`;
+}
+
+function hochladen(datei){
+  if(!speicherBereit()) return melde('Erst den Abgleich einrichten (Zahnrad).',4000);
+  if(datei.size>50*1024*1024) return melde(`${datei.name} ist größer als 50 MB.`,5000);
+  const endung=(datei.name.match(/\.[a-z0-9]{1,8}$/i)||[''])[0].toLowerCase();
+  const pfad=uid()+Math.random().toString(36).slice(2,10)+endung;
+  const eintrag={ id:uid(), name:datei.name, groesse:datei.size, typ:datei.type||'',
+                  pfad, hoch:jetzt(), ts:jetzt(), geloescht:false };
+  ladeStand[pfad]=0;
+  if(ansicht==='dateien') zeichnen();
+
+  const xhr=new XMLHttpRequest();
+  xhr.open('POST', basisUrl()+'/storage/v1/object/'+EIMER+'/'+pfad);
+  xhr.setRequestHeader('apikey',cfg.key);
+  xhr.setRequestHeader('Authorization','Bearer '+cfg.key);
+  xhr.setRequestHeader('Content-Type',datei.type||'application/octet-stream');
+  xhr.setRequestHeader('x-upsert','false');
+  xhr.upload.onprogress=e=>{
+    if(!e.lengthComputable) return;
+    ladeStand[pfad]=Math.round(e.loaded/e.total*100);
+    const b=document.querySelector(`[data-balken="${pfad}"]`);
+    if(b) b.style.width=ladeStand[pfad]+'%';
+  };
+  xhr.onload=()=>{
+    delete ladeStand[pfad];
+    if(xhr.status>=200&&xhr.status<300){
+      doc.dateien.unshift(eintrag); geaendert();
+      melde(datei.name+' übertragen.',2500);
+    }else{
+      if(ansicht==='dateien') zeichnen();
+      melde('Hochladen fehlgeschlagen. Ist der Speicher eingerichtet?',5000);
+    }
+  };
+  xhr.onerror=()=>{ delete ladeStand[pfad]; if(ansicht==='dateien') zeichnen(); melde('Keine Verbindung zum Speicher.',4000); };
+  xhr.send(datei);
+}
+
+async function herunterladen(d){
+  try{
+    melde('Wird geholt …',2000);
+    const r=await fetch(oeffentlicheUrl(d.pfad));
+    if(!r.ok) throw new Error();
+    const b=await r.blob();
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download=d.name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    melde('Gespeichert.',2000);
+  }catch(e){ melde('Datei nicht mehr verfügbar.',4000); }
+}
+
+async function dateiEntfernen(d,still){
+  try{
+    await fetch(basisUrl()+'/storage/v1/object/'+EIMER+'/'+d.pfad,{
+      method:'DELETE', headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key}
+    });
+  }catch(e){}
+  d.geloescht=true; d.ts=jetzt();
+  if(still){ sichern(); } else { geaendert(); melde('Gelöscht.',1800); }
+}
+
+function dateienAufraeumen(){
+  if(!speicherBereit()) return;
+  const alt=aktiv(doc.dateien).filter(d=>jetzt()-d.hoch>=LEBENSDAUER);
+  if(!alt.length) return;
+  alt.forEach(d=>dateiEntfernen(d,true));
+  setTimeout(()=>{ sichern(); zeichnen(); planeSync(); },600);
+}
+
 /* ============ Ansichten ============ */
-const REITER=[['heute','Heute'],['alle','Alle'],['bereiche','Bereiche'],['notizen','Notizen'],['serien','Serien'],['erledigt','Erledigt']];
+const REITER=[['heute','Heute'],['alle','Alle'],['bereiche','Bereiche'],['notizen','Notizen'],['serien','Serien'],['erledigt','Erledigt'],['dateien','Dateien']];
+
+document.getElementById('dateiwahl').onchange=e=>{
+  [...(e.target.files||[])].forEach(hochladen);
+  e.target.value='';
+};
 
 function zeichneNav(){
   $('nav').innerHTML=REITER.map(([k,l])=>
@@ -449,7 +561,12 @@ function zeichneSeite(){
           ${pkt('#B8B8B8')}<span class="nam">Ohne Bereich</span><em>${ohneN}</em></button>`:''}
        ${bs.length?`<button data-v="bereiche" aria-current="${ansicht==='bereiche'}"><span class="nam" style="color:var(--grau)">Bereiche verwalten</span></button>`:''}
      </div>
-     <div class="s-fuss"><button id="s-einst">Einstellungen</button></div>`;
+     <div class="s-fuss">
+       <button id="s-dateien" aria-current="${ansicht==='dateien'}">Dateien${aktiv(doc.dateien).length?' ('+aktiv(doc.dateien).length+')':''}</button>
+       <button id="s-einst">Einstellungen</button>
+     </div>`;
+
+  $('s-dateien').onclick=()=>{ offenerBereich=null; setzeAnsicht('dateien'); };
 
   $('s-logo').onclick=()=>{ offenerBereich=null; setzeAnsicht('heute'); };
   $('s-plus').onclick=()=>blattBereich(null);
@@ -651,6 +768,42 @@ function zeichnen(){
       clearTimeout(notizUhr);
       if(t.value!==((doc.notiz&&doc.notiz.text)||'')){ doc.notiz={text:t.value,ts:jetzt()}; sichern(); planeSync(); }
     });
+  }
+
+  else if(ansicht==='dateien'){
+    if(!speicherBereit()){
+      c.innerHTML=`<div class="leer"><b>Noch nicht eingerichtet.</b>
+        Für die Dateiübertragung braucht es den Abgleich mit Supabase. Oben rechts das Zahnrad.</div>`;
+    }else{
+      const ds=aktiv(doc.dateien).sort((x,y)=>y.hoch-x.hoch);
+      const laufend=Object.keys(ladeStand);
+      c.innerHTML=
+        `<div class="ablage" id="ablage">
+           <b>Datei auswählen</b>
+           <span>oder hierher ziehen &middot; höchstens 50 MB</span>
+         </div>
+         ${laufend.map(p=>`<div class="ladezeile"><span>Wird übertragen …</span>
+            <div class="balken"><i data-balken="${p}" style="width:${ladeStand[p]}%"></i></div></div>`).join('')}
+         ${ds.length?'<ul class="dateiliste">'+ds.map(d=>`
+           <li data-id="${d.id}">
+             <div class="d-mitte">
+               <div class="d-name">${esc(d.name)}</div>
+               <div class="unten">${esc(groesseText(d.groesse))} &middot; ${esc(restText(d.hoch))}</div>
+             </div>
+             <button class="d-hol" data-hol="${d.id}" title="Herunterladen">Laden</button>
+             <button class="kill" data-weg="${d.id}" aria-label="Löschen">&times;</button>
+           </li>`).join('')+'</ul>'
+          :`<div class="leer"><b>Keine Dateien.</b>Alles, was du hier ablegst, erscheint auf dem anderen Gerät und wird nach 24 Stunden automatisch gelöscht.</div>`}
+         <p class="hinweis">Dateien verschwinden 24 Stunden nach dem Hochladen von selbst – vorausgesetzt, die App wird in der Zwischenzeit einmal geöffnet. Nichts Vertrauliches ablegen: Wer die Adresse einer Datei kennt, kann sie ohne Passwort abrufen.</p>`;
+
+      const ablage=$('ablage');
+      ablage.onclick=()=>$('dateiwahl').click();
+      ['dragenter','dragover'].forEach(t=>ablage.addEventListener(t,e=>{ e.preventDefault(); ablage.classList.add('drueber'); }));
+      ['dragleave','drop'].forEach(t=>ablage.addEventListener(t,e=>{ e.preventDefault(); ablage.classList.remove('drueber'); }));
+      ablage.addEventListener('drop',e=>{ [...(e.dataTransfer.files||[])].forEach(hochladen); });
+      c.querySelectorAll('[data-hol]').forEach(b=>b.onclick=()=>herunterladen(doc.dateien.find(x=>x.id===b.dataset.hol)));
+      c.querySelectorAll('[data-weg]').forEach(b=>b.onclick=()=>dateiEntfernen(doc.dateien.find(x=>x.id===b.dataset.weg)));
+    }
   }
 
   else if(ansicht==='erledigt'){
@@ -912,11 +1065,13 @@ async function sync(still){
     doc.bereiche=verschmelze(doc.bereiche,fern.bereiche);
     doc.aufgaben=verschmelze(doc.aufgaben,fern.aufgaben);
     doc.vorlagen=verschmelze(doc.vorlagen,fern.vorlagen);
+    doc.dateien=verschmelze(doc.dateien,fern.dateien);
     if(fern.notiz&&typeof fern.notiz==='object'&&(fern.notiz.ts||0)>((doc.notiz&&doc.notiz.ts)||0)) doc.notiz=fern.notiz;
     serienPruefen(); sichern(); zeichnen();
-    const fernJson=JSON.stringify({bereiche:fern.bereiche||[],aufgaben:fern.aufgaben||[],vorlagen:fern.vorlagen||[],notiz:fern.notiz||{text:'',ts:0}});
+    const fernJson=JSON.stringify({bereiche:fern.bereiche||[],aufgaben:fern.aufgaben||[],vorlagen:fern.vorlagen||[],notiz:fern.notiz||{text:'',ts:0},dateien:fern.dateien||[]});
     if(JSON.stringify(doc)!==fernJson) await rpc('sync_push',{p_code:cfg.code,p_doc:doc});
     if(!still) melde('Abgeglichen um '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),2500);
+    dateienAufraeumen();
   }catch(e){
     melde('Abgleich fehlgeschlagen. Einstellungen prüfen.',4000);
   }finally{ syncLaeuft=false; }

@@ -73,6 +73,13 @@
   .faellig.warn{color:#B03A2E}
   .faellig.heute{color:var(--tinte)}
   .notizzeichen{font-style:italic}
+  .griff{
+    flex:0 0 auto;background:none;border:0;padding:6px 2px 6px 8px;cursor:grab;
+    touch-action:none;opacity:.45;align-self:center;
+  }
+  .griff:active{cursor:grabbing;opacity:1}
+  .griff svg{width:15px;height:18px;display:block}
+  li.auf.zieht{opacity:.55;background:var(--feld);outline:1px dashed var(--grau);outline-offset:-1px}
 
   /* Bereiche */
   li.bereich{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--linie);cursor:pointer}
@@ -284,9 +291,10 @@ function aufgabeAnlegen(roh,bereichId){
   if(t.length<2) return null;
   const {text,faellig}=erkenneDatum(t);
   if(text.length<2) return null;
+  const minPos=Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0));
   const a={ id:uid(), text:text.charAt(0).toUpperCase()+text.slice(1), notiz:'', faellig,
             erledigt:false, erledigtAm:null, bereichId:bereichId??cfg.ziel??null,
-            vorlageId:null, ts:jetzt(), geloescht:false };
+            vorlageId:null, pos:minPos-10, ts:jetzt(), geloescht:false };
   doc.aufgaben.unshift(a);
   geaendert();
   return a;
@@ -338,7 +346,9 @@ function serienPruefen(){
     const dop=doc.aufgaben.find(a=>!a.geloescht&&!a.erledigt&&a.vorlageId===v.id&&a.faellig===v.naechster);
     if(dop){ v.aktivInstanz=dop.id; v.ts=jetzt(); neu=true; return; }
     const a={ id:uid(), text:v.text, notiz:v.notiz||'', faellig:v.naechster, erledigt:false, erledigtAm:null,
-              bereichId:v.bereichId, vorlageId:v.id, ts:jetzt(), geloescht:false };
+              bereichId:v.bereichId, vorlageId:v.id,
+              pos:Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0))-10,
+              ts:jetzt(), geloescht:false };
     doc.aufgaben.unshift(a); v.aktivInstanz=a.id; v.ts=jetzt(); neu=true;
   });
   return neu;
@@ -374,6 +384,8 @@ function aufgabenHtml(liste,zeigeBereich){
     return `<li class="auf${a.erledigt?' fertig':''}" data-id="${a.id}">
       <button class="kasten" style="${a.erledigt?`background:${esc(f)};border-color:${esc(f)}`:`border-color:${esc(f)}`}" aria-label="Abhaken"></button>
       <div class="mitte"><div class="titel">${esc(a.text)}</div>${teile.length?`<div class="unten">${teile.join('')}</div>`:''}</div>
+      ${a.erledigt?'':`<button class="griff" aria-label="Verschieben" title="Zum Verschieben ziehen">
+        <svg viewBox="0 0 10 16" fill="currentColor"><circle cx="2" cy="3" r="1.4"/><circle cx="8" cy="3" r="1.4"/><circle cx="2" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="2" cy="13" r="1.4"/><circle cx="8" cy="13" r="1.4"/></svg></button>`}
     </li>`;
   }).join('')+'</ul>';
 }
@@ -382,7 +394,55 @@ function bindeAufgaben(){
     const a=doc.aufgaben.find(x=>x.id===li.dataset.id); if(!a) return;
     li.querySelector('.kasten').onclick=()=>abhaken(a);
     li.querySelector('.mitte').onclick=()=>blattAufgabe(a);
+    const griff=li.querySelector('.griff');
+    if(griff) griff.addEventListener('pointerdown',e=>ziehenStart(e,li));
   });
+}
+
+/* eigene Reihenfolge: Ziehen am Griff */
+function sortiert(liste){ return liste.slice().sort((x,y)=>(x.pos??0)-(y.pos??0)); }
+
+function ziehenStart(e,li){
+  if(e.button!==undefined&&e.button!==0) return;
+  e.preventDefault();
+  const ul=li.parentElement;
+  li.classList.add('zieht');
+  let rollUhr=null;
+  const bewege=ev=>{
+    ev.preventDefault();
+    const y=ev.clientY;
+    for(const g of [...ul.querySelectorAll('li.auf')]){
+      if(g===li) continue;
+      const r=g.getBoundingClientRect();
+      if(y>=r.top&&y<=r.top+r.height/2){ ul.insertBefore(li,g); break; }
+      if(y>r.top+r.height/2&&y<=r.bottom){ ul.insertBefore(li,g.nextSibling); break; }
+    }
+    clearTimeout(rollUhr);
+    if(y<100) rollUhr=setTimeout(()=>window.scrollBy(0,-24),16);
+    else if(y>window.innerHeight-150) rollUhr=setTimeout(()=>window.scrollBy(0,24),16);
+  };
+  const ende=()=>{
+    clearTimeout(rollUhr);
+    document.removeEventListener('pointermove',bewege);
+    document.removeEventListener('pointerup',ende);
+    document.removeEventListener('pointercancel',ende);
+    li.classList.remove('zieht');
+    const ids=[...ul.querySelectorAll('li.auf')].map(x=>x.dataset.id);
+    let geaendertWas=false;
+    ids.forEach((id,i)=>{
+      const a=doc.aufgaben.find(x=>x.id===id);
+      if(a&&a.pos!==i*10){ a.pos=i*10; a.ts=jetzt(); geaendertWas=true; }
+    });
+    if(geaendertWas) geaendert();
+  };
+  document.addEventListener('pointermove',bewege,{passive:false});
+  document.addEventListener('pointerup',ende);
+  document.addEventListener('pointercancel',ende);
+}
+
+function nachOben(a){
+  const min=Math.min(0,...aktiv(doc.aufgaben).filter(x=>!x.erledigt).map(x=>x.pos??0));
+  a.pos=min-10; a.ts=jetzt(); geaendert();
 }
 
 function zeichnen(){
@@ -393,10 +453,9 @@ function zeichnen(){
 
   if(ansicht==='heute'){
     const faellig=offene.filter(a=>a.faellig&&tageBis(a.faellig)<=0);
-    const ohne=offene.filter(a=>!a.faellig);
-    faellig.sort((x,y)=>x.faellig<y.faellig?-1:1);
+    const ohne=sortiert(offene.filter(a=>!a.faellig));
     let h='';
-    const ueber=faellig.filter(a=>tageBis(a.faellig)<0), heut=faellig.filter(a=>tageBis(a.faellig)===0);
+    const ueber=sortiert(faellig.filter(a=>tageBis(a.faellig)<0)), heut=sortiert(faellig.filter(a=>tageBis(a.faellig)===0));
     if(ueber.length) h+='<h2>Überfällig</h2>'+aufgabenHtml(ueber,true);
     if(heut.length) h+='<h2>Heute</h2>'+aufgabenHtml(heut,true);
     if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
@@ -405,11 +464,12 @@ function zeichnen(){
   }
 
   else if(ansicht==='alle'){
-    const mit=offene.filter(a=>a.faellig).sort((x,y)=>x.faellig<y.faellig?-1:1);
-    const ohne=offene.filter(a=>!a.faellig);
+    const mit=offene.filter(a=>a.faellig);
+    const ohne=sortiert(offene.filter(a=>!a.faellig));
     const grp={ueber:[],heute:[],woche:[],spaeter:[]};
     mit.forEach(a=>{ const t=tageBis(a.faellig);
       if(t<0) grp.ueber.push(a); else if(t===0) grp.heute.push(a); else if(t<=7) grp.woche.push(a); else grp.spaeter.push(a); });
+    Object.keys(grp).forEach(k=>grp[k]=sortiert(grp[k]));
     let h='';
     if(grp.ueber.length) h+='<h2>Überfällig</h2>'+aufgabenHtml(grp.ueber,true);
     if(grp.heute.length) h+='<h2>Heute</h2>'+aufgabenHtml(grp.heute,true);
@@ -450,8 +510,7 @@ function zeichnen(){
   else if(ansicht==='bereich'){
     const b=offenerBereich==='__ohne'?null:bereichVon(offenerBereich);
     if(offenerBereich!=='__ohne'&&!b){ offenerBereich=null; return setzeAnsicht('bereiche'); }
-    const liste=offene.filter(a=>offenerBereich==='__ohne'?!bereichVon(a.bereichId):a.bereichId===offenerBereich)
-      .sort((x,y)=>(x.faellig||'9999')<(y.faellig||'9999')?-1:1);
+    const liste=sortiert(offene.filter(a=>offenerBereich==='__ohne'?!bereichVon(a.bereichId):a.bereichId===offenerBereich));
     c.innerHTML=`<button class="zurueck" id="zur">&larr; Bereiche</button>
       <div class="titelzeile">
         <span class="punkt" style="width:14px;height:14px;background:${esc(b?b.farbe:'#B8B8B8')}"></span>
@@ -526,12 +585,14 @@ function blattAufgabe(a){
     ${a.vorlageId?`<p class="hinweis">Diese Aufgabe stammt aus einer Serie. Beim Abhaken wird automatisch der nächste Termin gesetzt.</p>`:''}
     <div class="knopfreihe">
       <button class="knopf voll" id="f-ok">Speichern</button>
+      <button class="knopf" id="f-oben">Ganz nach oben</button>
       <button class="knopf" id="f-ab">Abbrechen</button>
       <button class="knopf leise" id="f-weg">Löschen</button>
     </div>`);
   $('blatt').querySelectorAll('.schnell button').forEach(b=>b.onclick=()=>{
     $('f-datum').value=b.dataset.t===''?'':plusTage(isoHeute(),+b.dataset.t);
   });
+  $('f-oben').onclick=()=>{ blattZu(); nachOben(a); };
   $('f-ok').onclick=()=>{
     const t=$('f-text').value.trim(); if(t.length<1) return;
     a.text=t; a.faellig=$('f-datum').value||null;
@@ -804,6 +865,7 @@ $('datei').onchange=e=>{
 
 /* ============ Teilen-Ziel / Start ============ */
 (function start(){
+  doc.aufgaben.forEach((a,i)=>{ if(typeof a.pos!=='number') a.pos=i*10; });
   const p=new URLSearchParams(location.search);
   const geteilt=[p.get('title'),p.get('text'),p.get('url')].filter(Boolean).join(' ').trim();
   if(geteilt){ aufgabeAnlegen(geteilt,cfg.ziel); history.replaceState({},'',location.pathname); }

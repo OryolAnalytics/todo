@@ -640,8 +640,26 @@ $('eingabe').addEventListener('keydown',e=>{
 
 /* ============ Diktieren ============ */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let erk=null, hoert=false;
+let erk=null, hoert=false, puffer='', laufend='', abschaltUhr=null;
 function melde(t,ms){ const s=$('status'); s.textContent=t; clearTimeout(s._t); s._t=setTimeout(()=>{s.textContent='';},ms||3500); }
+function zielBereich(){ return ansicht==='bereich'?(offenerBereich==='__ohne'?null:offenerBereich):cfg.ziel; }
+
+/* Chrome auf Android meldet Teilergebnisse mehrfach als "endgültig" und wiederholt
+   dabei den bisherigen Satz. Deshalb wird der komplette Text bei jedem Ereignis neu
+   zusammengesetzt und dabei entfernt, was schon enthalten ist. */
+function baueText(ergebnisse){
+  let t='';
+  for(let i=0;i<ergebnisse.length;i++){
+    const s=(ergebnisse[i][0].transcript||'').trim();
+    if(!s) continue;
+    if(!t){ t=s; continue; }
+    const a=t.toLowerCase(), b=s.toLowerCase();
+    if(b.startsWith(a)) t=s;              // kumulativ: ersetzt den bisherigen Stand
+    else if(a.endsWith(b)) continue;      // schon enthalten
+    else t+=' '+s;                        // echte Fortsetzung
+  }
+  return t;
+}
 
 if(!SR){
   $('mik').style.opacity=.3;
@@ -649,26 +667,47 @@ if(!SR){
 }else{
   erk=new SR(); erk.lang='de-DE'; erk.continuous=true; erk.interimResults=true;
   erk.onresult=e=>{
-    let zwischen='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const s=e.results[i][0].transcript;
-      if(e.results[i].isFinal){
-        const ziel=ansicht==='bereich'?(offenerBereich==='__ohne'?null:offenerBereich):cfg.ziel;
-        aufgabeAnlegen(s,ziel);
-      } else zwischen+=s;
-    }
-    $('mitschrift').textContent=zwischen;
+    laufend=baueText(e.results);
+    $('mitschrift').textContent=(puffer+' '+laufend).trim();
   };
   erk.onerror=e=>{
     if(e.error==='not-allowed'||e.error==='service-not-allowed'){
-      diktatAus(); melde('Mikrofon ist blockiert. Bitte in den Browser-Einstellungen für diese Seite erlauben.',6000);
+      hoert=false; diktatAus(true);
+      melde('Mikrofon ist blockiert. Bitte in den Browser-Einstellungen für diese Seite erlauben.',6000);
     }
   };
-  erk.onend=()=>{ if(hoert){ try{erk.start();}catch(e){} } else $('mitschrift').textContent=''; };
+  erk.onend=()=>{
+    if(!hoert) return;
+    puffer=(puffer+' '+laufend).trim(); laufend='';
+    try{ erk.start(); }catch(e){}
+  };
   $('mik').onclick=()=>hoert?diktatAus():diktatAn();
 }
-function diktatAn(){ try{erk.start();}catch(e){} hoert=true; $('mik').classList.add('an'); melde('Ich höre zu. Nach jeder Sprechpause entsteht ein Punkt.',4000); }
-function diktatAus(){ hoert=false; $('mik').classList.remove('an'); try{erk.stop();}catch(e){} $('mitschrift').textContent=''; }
+
+function diktatAn(){
+  puffer=''; laufend='';
+  try{ erk.start(); }catch(e){}
+  hoert=true;
+  $('mik').classList.add('an');
+  $('mitschrift').textContent='';
+  melde('Ich höre zu. Zum Beenden nochmal auf das Mikrofon tippen.',4000);
+  clearTimeout(abschaltUhr);
+  abschaltUhr=setTimeout(()=>{ if(hoert) diktatAus(); },120000);
+}
+
+function diktatAus(nurBeenden){
+  hoert=false;
+  clearTimeout(abschaltUhr);
+  $('mik').classList.remove('an');
+  try{ erk.stop(); }catch(e){}
+  const text=(puffer+' '+laufend).trim();
+  puffer=''; laufend='';
+  $('mitschrift').textContent='';
+  if(nurBeenden||!text) return;
+  const a=aufgabeAnlegen(text,zielBereich());
+  if(a) melde('Angelegt: '+a.text,3000);
+  else melde('Da war nichts Verwertbares dabei.',2500);
+}
 
 /* ============ Abgleich ============ */
 let syncTimer=null, syncLaeuft=false;

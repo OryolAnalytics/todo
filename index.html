@@ -680,11 +680,11 @@ function zeichnen(){
       if(t<0) grp.ueber.push(a); else if(t===0) grp.heute.push(a); else if(t<=7) grp.woche.push(a); else grp.spaeter.push(a); });
     Object.keys(grp).forEach(k=>grp[k]=sortiert(grp[k]));
     let h='';
+    if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
     if(grp.ueber.length) h+='<h2>Überfällig</h2>'+aufgabenHtml(grp.ueber,true);
     if(grp.heute.length) h+='<h2>Heute</h2>'+aufgabenHtml(grp.heute,true);
     if(grp.woche.length) h+='<h2>Diese Woche</h2>'+aufgabenHtml(grp.woche,true);
     if(grp.spaeter.length) h+='<h2>Später</h2>'+aufgabenHtml(grp.spaeter,true);
-    if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
     c.innerHTML=h||`<div class="leer"><b>Liste ist leer.</b>Unten eintippen oder das Mikrofon drücken.</div>`;
     bindeAufgaben();
   }

@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>To do</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="To do">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="./icon-192.png">
+<style>
+  :root{
+    --tinte:#111111;
+    --grau:#767676;
+    --linie:#DEDEDE;
+    --feld:#F7F7F7;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:#fff}
+  body{
+    font-family:"Times New Roman",Times,Liberation Serif,serif;
+    color:var(--tinte);font-size:18px;line-height:1.4;
+    min-height:100vh;
+    padding:18px 18px calc(150px + env(safe-area-inset-bottom));
+    display:flex;justify-content:center;
+  }
+  .wrap{width:100%;max-width:640px}
+  button,input,select,textarea{font-family:inherit;color:inherit}
+
+  /* Kopf */
+  .kopf{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+  .logo{display:inline-block;text-align:center;cursor:pointer}
+  .logo span{font-size:34px;line-height:1;letter-spacing:.01em;display:block}
+  .logo i{display:block;height:1.5px;background:var(--tinte);margin:5px auto 0;width:72%}
+  .zahn{background:none;border:0;padding:6px;cursor:pointer;font-size:22px;line-height:1;color:var(--grau)}
+
+  /* Reiter */
+  nav{display:flex;gap:20px;border-bottom:1px solid var(--linie);margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{
+    background:none;border:0;padding:0 0 9px;cursor:pointer;white-space:nowrap;
+    font-size:16px;color:var(--grau);position:relative;
+  }
+  nav button[aria-current="true"]{color:var(--tinte)}
+  nav button[aria-current="true"]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--tinte)}
+
+  h2{font-size:15px;font-weight:normal;font-variant:small-caps;letter-spacing:.08em;color:var(--grau);
+     margin:22px 0 2px;border-bottom:1px solid var(--linie);padding-bottom:5px}
+  h2:first-child{margin-top:0}
+
+  /* Aufgaben */
+  ul{list-style:none;margin:0;padding:0}
+  li.auf{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--linie)}
+  .kasten{
+    flex:0 0 auto;width:20px;height:20px;margin-top:3px;border:1.5px solid var(--grau);
+    background:#fff;cursor:pointer;padding:0;position:relative;border-radius:3px;
+  }
+  .kasten::after{
+    content:"";position:absolute;left:5px;top:2px;width:6px;height:11px;
+    border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg) scale(0);
+    transition:transform .16s ease;
+  }
+  li.fertig .kasten::after{transform:rotate(42deg) scale(1)}
+  .mitte{flex:1;min-width:0;cursor:pointer}
+  .titel{word-break:break-word}
+  li.fertig .titel{color:var(--grau);text-decoration:line-through}
+  .unten{font-size:14px;color:var(--grau);margin-top:1px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .bereichs-tag{display:inline-flex;align-items:center;gap:5px}
+  .punkt{width:9px;height:9px;border-radius:50%;flex:0 0 auto;display:inline-block}
+  .faellig.warn{color:#B03A2E}
+  .faellig.heute{color:var(--tinte)}
+  .notizzeichen{font-style:italic}
+
+  /* Bereiche */
+  li.bereich{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--linie);cursor:pointer}
+  li.bereich .punkt{width:14px;height:14px}
+  li.bereich .nam{flex:1;font-size:20px}
+  li.bereich .anz{color:var(--grau);font-size:15px}
+  .stift{background:none;border:0;color:var(--grau);cursor:pointer;font-size:15px;padding:4px}
+
+  /* Serien */
+  li.serie{padding:13px 0;border-bottom:1px solid var(--linie);cursor:pointer}
+  li.serie .kopfz{display:flex;gap:10px;align-items:center}
+  li.serie .kopfz .nam{flex:1}
+
+  .leer{padding:36px 2px;color:var(--grau)}
+  .leer b{display:block;color:var(--tinte);font-weight:normal;font-size:21px;margin-bottom:4px}
+  .zurueck{background:none;border:0;color:var(--grau);cursor:pointer;padding:0 0 10px;font-size:16px}
+  .titelzeile{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .titelzeile h1{font-size:26px;font-weight:normal;margin:0;flex:1}
+
+  .knopf{
+    background:#fff;border:1px solid var(--tinte);border-radius:4px;padding:9px 16px;
+    font-size:16px;cursor:pointer;
+  }
+  .knopf.voll{background:var(--tinte);color:#fff}
+  .knopf.leise{border-color:var(--linie);color:var(--grau)}
+  .knopfreihe{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+
+  /* Eingabeleiste */
+  .leiste{
+    position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--linie);
+    padding:10px 18px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:center;
+  }
+  .leiste-inner{width:100%;max-width:640px}
+  .ziel{display:flex;align-items:center;gap:7px;font-size:14px;color:var(--grau);
+        background:none;border:0;padding:0 0 7px;cursor:pointer}
+  .reihe{display:flex;gap:10px;align-items:center}
+  input[type=text],input[type=date],input[type=number],select,textarea{
+    width:100%;font-size:16px;background:var(--feld);border:1px solid var(--linie);
+    border-radius:4px;padding:11px 12px;outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--tinte)}
+  textarea{resize:vertical;min-height:80px;line-height:1.4}
+  .mik{
+    flex:0 0 auto;width:50px;height:50px;border-radius:50%;background:var(--tinte);border:0;
+    cursor:pointer;position:relative;display:grid;place-items:center;
+  }
+  .mik svg{width:22px;height:22px;position:relative;z-index:1}
+  .mik .welle{position:absolute;inset:0;border-radius:50%;background:#B03A2E;opacity:0}
+  .mik.an{background:#B03A2E}
+  .mik.an .welle{animation:welle 1.5s ease-out infinite}
+  @keyframes welle{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.7);opacity:0}}
+  .mitschrift{font-style:italic;color:var(--grau);min-height:0;font-size:15px;padding:0 0 6px}
+
+  /* Blatt (Dialog) */
+  .schleier{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:20}
+  .schleier.auf{display:block}
+  .blatt{
+    position:fixed;left:0;right:0;bottom:0;background:#fff;z-index:21;
+    border-radius:12px 12px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));
+    max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .22s ease;
+    box-shadow:0 -4px 24px rgba(0,0,0,.12);
+  }
+  .blatt.auf{transform:none}
+  @media(min-width:680px){
+    .blatt{left:50%;right:auto;bottom:auto;top:50%;width:560px;max-width:92vw;
+           transform:translate(-50%,-42%) scale(.97);opacity:0;border-radius:10px;transition:.18s ease}
+    .blatt.auf{transform:translate(-50%,-50%);opacity:1}
+  }
+  .blatt h3{font-size:22px;font-weight:normal;margin:0 0 16px}
+  label{display:block;font-size:14px;color:var(--grau);margin:14px 0 5px}
+  label:first-of-type{margin-top:0}
+  .farben{display:flex;gap:10px;flex-wrap:wrap}
+  .farbe{width:34px;height:34px;border-radius:50%;border:2px solid #fff;cursor:pointer;
+         box-shadow:0 0 0 1px var(--linie)}
+  .farbe[aria-pressed="true"]{box-shadow:0 0 0 2px var(--tinte)}
+  .schnell{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .schnell button{background:var(--feld);border:1px solid var(--linie);border-radius:20px;
+                  padding:6px 13px;font-size:14px;cursor:pointer;color:var(--grau)}
+  .zwei{display:flex;gap:10px}
+  .zwei>*{flex:1}
+  .hinweis{font-size:14px;color:var(--grau);margin:10px 0 0;line-height:1.35}
+  .status{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));
+          text-align:center;font-size:14px;color:var(--grau);pointer-events:none;z-index:10}
+  :focus-visible{outline:2px solid var(--tinte);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kopf">
+    <div class="logo" id="logo" role="button" tabindex="0" title="Zur Startansicht">
+      <span>To do</span><i></i>
+    </div>
+    <button class="zahn" id="btn-einst" aria-label="Einstellungen">&#9881;</button>
+  </div>
+
+  <nav id="nav"></nav>
+  <div id="inhalt"></div>
+</div>
+
+<div class="leiste" id="leiste">
+  <div class="leiste-inner">
+    <div class="mitschrift" id="mitschrift"></div>
+    <button class="ziel" id="ziel"></button>
+    <div class="reihe">
+      <input type="text" id="eingabe" placeholder="Aufgabe eintippen und Enter" autocomplete="off">
+      <button class="mik" id="mik" aria-label="Diktieren">
+        <span class="welle"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+          <rect x="9" y="2" width="6" height="11" rx="3" fill="#fff" stroke="none"/>
+          <path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="status" id="status"></div>
+<div class="schleier" id="schleier"></div>
+<div class="blatt" id="blatt"></div>
+<input type="file" id="datei" accept="application/json" hidden>
+
+<script>
+"use strict";
+
+/* ============ Speicher ============ */
+const LS = (() => {
+  try { localStorage.setItem('_p','1'); localStorage.removeItem('_p'); return localStorage; }
+  catch(e){ const m={}; return {getItem:k=>k in m?m[k]:null,setItem:(k,v)=>{m[k]=String(v)}}; }
+})();
+const DOC_KEY='todo.doc.v1', CFG_KEY='todo.cfg.v1';
+
+const FARBEN=['#B03A2E','#CA6F1E','#B7950B','#1E8449','#0E8074','#1F6FB2','#34495E','#6C3483','#A5468B','#5D6D7E'];
+
+let doc={bereiche:[],aufgaben:[],vorlagen:[]};
+let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute'};
+let ansicht='heute', offenerBereich=null;
+
+try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[]}; }catch(e){}
+try{ const c=JSON.parse(LS.getItem(CFG_KEY)); if(c&&typeof c==='object') cfg=Object.assign(cfg,c); }catch(e){}
+
+const $=id=>document.getElementById(id);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const jetzt=()=>Date.now();
+const aktiv=liste=>liste.filter(x=>!x.geloescht);
+const sichern=()=>{ LS.setItem(DOC_KEY,JSON.stringify(doc)); LS.setItem(CFG_KEY,JSON.stringify(cfg)); };
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ============ Datum ============ */
+function isoVon(d){ const x=new Date(d); x.setMinutes(x.getMinutes()-x.getTimezoneOffset()); return x.toISOString().slice(0,10); }
+function isoHeute(){ return isoVon(new Date()); }
+function plusTage(iso,n){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+n); return isoVon(d); }
+function tageBis(iso){
+  if(!iso) return null;
+  return Math.round((new Date(iso+'T12:00:00') - new Date(isoHeute()+'T12:00:00'))/86400000);
+}
+const WOCHENTAGE=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+function fmtFaellig(iso){
+  const d=tageBis(iso); if(d===null) return '';
+  if(d<0) return d===-1?'1 Tag überfällig':(-d)+' Tage überfällig';
+  if(d===0) return 'Heute';
+  if(d===1) return 'Morgen';
+  if(d<7) return WOCHENTAGE[new Date(iso+'T12:00:00').getDay()];
+  return new Date(iso+'T12:00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short',year:tageBis(iso)>330?'numeric':undefined});
+}
+
+/* ============ Datumserkennung im Text ============ */
+const ZAHLWORT={ein:1,einer:1,einem:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,zwoelf:12,vierzehn:14};
+function zahl(s){ if(!s) return null; s=s.toLowerCase(); return /^\d+$/.test(s)?parseInt(s,10):(ZAHLWORT[s]??null); }
+
+function erkenneDatum(roh){
+  let text=' '+roh+' ', faellig=null;
+  const weg=re=>{ const m=text.match(re); if(m){ text=text.replace(m[0],' '); return m; } return null; };
+  const zahlM='(\\d{1,2}|ein|einer|einem|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwoelf|vierzehn)';
+  let m;
+
+  if((m=weg(/\s(am\s+)?(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})?\s/i))){
+    const t=+m[2], mo=+m[3]; let j=m[4]?(m[4].length===2?2000+ +m[4]:+m[4]):new Date().getFullYear();
+    let iso=`${j}-${String(mo).padStart(2,'0')}-${String(t).padStart(2,'0')}`;
+    if(!m[4] && tageBis(iso)<0) iso=`${j+1}-${String(mo).padStart(2,'0')}-${String(t).padStart(2,'0')}`;
+    faellig=iso;
+  }
+  else if((m=weg(/\s(am\s+)(\d{1,2})\.(?!\d)\s/i))){
+    const t=+m[2], n=new Date(); let mo=n.getMonth(), j=n.getFullYear();
+    let iso=`${j}-${String(mo+1).padStart(2,'0')}-${String(t).padStart(2,'0')}`;
+    if(tageBis(iso)<0){ mo++; if(mo>11){mo=0;j++;} iso=`${j}-${String(mo+1).padStart(2,'0')}-${String(t).padStart(2,'0')}`; }
+    faellig=iso;
+  }
+  else if(weg(/\sübermorgen\s/i)) faellig=plusTage(isoHeute(),2);
+  else if(weg(/\s(heute\s+abend|heute)\s/i)) faellig=isoHeute();
+  else if(weg(/\s(morgen\s+früh|morgen\s+abend|morgen)\s/i)) faellig=plusTage(isoHeute(),1);
+  else if((m=weg(new RegExp('\\sin\\s+'+zahlM+'\\s+wochen?\\s','i')))) { const n=zahl(m[1]); if(n) faellig=plusTage(isoHeute(),7*n); }
+  else if((m=weg(new RegExp('\\sin\\s+'+zahlM+'\\s+tagen?\\s','i')))) { const n=zahl(m[1]); if(n) faellig=plusTage(isoHeute(),n); }
+  else if(weg(/\s(nächste|naechste|kommende)\s+woche\s/i)) faellig=plusTage(isoHeute(),7);
+  else if((m=weg(/\s(am\s+|nächsten\s+|naechsten\s+|kommenden\s+)?(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend|sonntag)\s/i))){
+    const namen={montag:1,dienstag:2,mittwoch:3,donnerstag:4,freitag:5,samstag:6,sonnabend:6,sonntag:0};
+    const ziel=namen[m[2].toLowerCase()], heute=new Date().getDay();
+    let diff=(ziel-heute+7)%7; if(diff===0) diff=7;
+    faellig=plusTage(isoHeute(),diff);
+  }
+
+  text=text.replace(/\s+/g,' ').trim().replace(/^(und|dann|bis|am|noch)\s+/i,'').replace(/[,;]+$/,'').trim();
+  return {text,faellig};
+}
+
+/* ============ Anlegen / Ändern ============ */
+function aufgabeAnlegen(roh,bereichId){
+  let t=String(roh||'').replace(/\s+/g,' ').trim().replace(/[.]+$/,'');
+  if(t.length<2) return null;
+  const {text,faellig}=erkenneDatum(t);
+  if(text.length<2) return null;
+  const a={ id:uid(), text:text.charAt(0).toUpperCase()+text.slice(1), notiz:'', faellig,
+            erledigt:false, erledigtAm:null, bereichId:bereichId??cfg.ziel??null,
+            vorlageId:null, ts:jetzt(), geloescht:false };
+  doc.aufgaben.unshift(a);
+  geaendert();
+  return a;
+}
+function geaendert(){ sichern(); zeichnen(); planeSync(); }
+function bereichVon(id){ return doc.bereiche.find(b=>b.id===id&&!b.geloescht)||null; }
+function farbeVon(id){ const b=bereichVon(id); return b?b.farbe:'#B8B8B8'; }
+
+function abhaken(a){
+  a.erledigt=!a.erledigt;
+  a.erledigtAm=a.erledigt?jetzt():null;
+  a.ts=jetzt();
+  if(a.erledigt&&a.vorlageId) serieWeiter(a.vorlageId);
+  geaendert();
+}
+function loeschen(a){
+  a.geloescht=true; a.ts=jetzt();
+  if(a.vorlageId&&!a.erledigt) serieWeiter(a.vorlageId);
+  geaendert();
+}
+
+/* ============ Serien ============ */
+function naechsterTermin(iso,r){
+  let d=new Date(iso+'T12:00:00'); const n=Math.max(1,r.n||1);
+  const schritt=()=>{
+    if(r.typ==='tage') d.setDate(d.getDate()+n);
+    else if(r.typ==='wochen') d.setDate(d.getDate()+7*n);
+    else if(r.typ==='monate'){ const tag=d.getDate(); d.setDate(1); d.setMonth(d.getMonth()+n);
+      d.setDate(Math.min(tag,new Date(d.getFullYear(),d.getMonth()+1,0).getDate())); }
+    else d.setFullYear(d.getFullYear()+n);
+  };
+  schritt();
+  let schutz=0;
+  while(tageBis(isoVon(d))<0 && schutz++<400) schritt();
+  return isoVon(d);
+}
+function serieWeiter(vid){
+  const v=doc.vorlagen.find(x=>x.id===vid&&!x.geloescht); if(!v) return;
+  v.naechster=naechsterTermin(v.naechster,v.rhythmus);
+  v.aktivInstanz=null; v.ts=jetzt();
+}
+function serienPruefen(){
+  let neu=false;
+  aktiv(doc.vorlagen).forEach(v=>{
+    if(!v.naechster||!v.rhythmus) return;
+    const inst=v.aktivInstanz?doc.aufgaben.find(a=>a.id===v.aktivInstanz&&!a.geloescht&&!a.erledigt):null;
+    if(inst) return;
+    if(tageBis(v.naechster)>(v.vorlauf??7)) return;
+    const dop=doc.aufgaben.find(a=>!a.geloescht&&!a.erledigt&&a.vorlageId===v.id&&a.faellig===v.naechster);
+    if(dop){ v.aktivInstanz=dop.id; v.ts=jetzt(); neu=true; return; }
+    const a={ id:uid(), text:v.text, notiz:v.notiz||'', faellig:v.naechster, erledigt:false, erledigtAm:null,
+              bereichId:v.bereichId, vorlageId:v.id, ts:jetzt(), geloescht:false };
+    doc.aufgaben.unshift(a); v.aktivInstanz=a.id; v.ts=jetzt(); neu=true;
+  });
+  return neu;
+}
+function rhythmusText(r){
+  if(!r) return '';
+  const n=r.n||1;
+  if(r.typ==='tage')   return n===1?'täglich':`alle ${n} Tage`;
+  if(r.typ==='wochen') return n===1?'wöchentlich':`alle ${n} Wochen`;
+  if(r.typ==='monate') return n===1?'monatlich':(n===3?'vierteljährlich':`alle ${n} Monate`);
+  return n===1?'jährlich':`alle ${n} Jahre`;
+}
+
+/* ============ Ansichten ============ */
+const REITER=[['heute','Heute'],['alle','Alle'],['bereiche','Bereiche'],['serien','Serien'],['erledigt','Erledigt']];
+
+function zeichneNav(){
+  $('nav').innerHTML=REITER.map(([k,l])=>
+    `<button data-v="${k}" aria-current="${(ansicht===k||(ansicht==='bereich'&&k==='bereiche'))}">${l}</button>`).join('');
+  $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{ offenerBereich=null; setzeAnsicht(b.dataset.v); });
+}
+function setzeAnsicht(v){ ansicht=v; cfg.ansicht=(v==='bereich'?'bereiche':v); sichern(); zeichnen(); }
+
+function aufgabenHtml(liste,zeigeBereich){
+  return '<ul>'+liste.map(a=>{
+    const f=farbeVon(a.bereichId), b=bereichVon(a.bereichId), t=tageBis(a.faellig);
+    const kl=t===null?'':(t<0?'faellig warn':(t===0?'faellig heute':'faellig'));
+    const teile=[];
+    if(a.faellig) teile.push(`<span class="${kl}">${esc(fmtFaellig(a.faellig))}</span>`);
+    if(zeigeBereich&&b) teile.push(`<span class="bereichs-tag"><span class="punkt" style="background:${esc(b.farbe)}"></span>${esc(b.name)}</span>`);
+    if(a.vorlageId) teile.push('<span>Serie</span>');
+    if(a.notiz&&a.notiz.trim()) teile.push('<span class="notizzeichen">Notiz</span>');
+    return `<li class="auf${a.erledigt?' fertig':''}" data-id="${a.id}">
+      <button class="kasten" style="${a.erledigt?`background:${esc(f)};border-color:${esc(f)}`:`border-color:${esc(f)}`}" aria-label="Abhaken"></button>
+      <div class="mitte"><div class="titel">${esc(a.text)}</div>${teile.length?`<div class="unten">${teile.join('')}</div>`:''}</div>
+    </li>`;
+  }).join('')+'</ul>';
+}
+function bindeAufgaben(){
+  document.querySelectorAll('li.auf').forEach(li=>{
+    const a=doc.aufgaben.find(x=>x.id===li.dataset.id); if(!a) return;
+    li.querySelector('.kasten').onclick=()=>abhaken(a);
+    li.querySelector('.mitte').onclick=()=>blattAufgabe(a);
+  });
+}
+
+function zeichnen(){
+  if(serienPruefen()) sichern();
+  zeichneNav();
+  const c=$('inhalt');
+  const offene=aktiv(doc.aufgaben).filter(a=>!a.erledigt);
+
+  if(ansicht==='heute'){
+    const faellig=offene.filter(a=>a.faellig&&tageBis(a.faellig)<=0);
+    const ohne=offene.filter(a=>!a.faellig);
+    faellig.sort((x,y)=>x.faellig<y.faellig?-1:1);
+    let h='';
+    const ueber=faellig.filter(a=>tageBis(a.faellig)<0), heut=faellig.filter(a=>tageBis(a.faellig)===0);
+    if(ueber.length) h+='<h2>Überfällig</h2>'+aufgabenHtml(ueber,true);
+    if(heut.length) h+='<h2>Heute</h2>'+aufgabenHtml(heut,true);
+    if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
+    c.innerHTML=h||`<div class="leer"><b>Nichts zu tun.</b>Keine Aufgabe ist heute fällig.</div>`;
+    bindeAufgaben();
+  }
+
+  else if(ansicht==='alle'){
+    const mit=offene.filter(a=>a.faellig).sort((x,y)=>x.faellig<y.faellig?-1:1);
+    const ohne=offene.filter(a=>!a.faellig);
+    const grp={ueber:[],heute:[],woche:[],spaeter:[]};
+    mit.forEach(a=>{ const t=tageBis(a.faellig);
+      if(t<0) grp.ueber.push(a); else if(t===0) grp.heute.push(a); else if(t<=7) grp.woche.push(a); else grp.spaeter.push(a); });
+    let h='';
+    if(grp.ueber.length) h+='<h2>Überfällig</h2>'+aufgabenHtml(grp.ueber,true);
+    if(grp.heute.length) h+='<h2>Heute</h2>'+aufgabenHtml(grp.heute,true);
+    if(grp.woche.length) h+='<h2>Diese Woche</h2>'+aufgabenHtml(grp.woche,true);
+    if(grp.spaeter.length) h+='<h2>Später</h2>'+aufgabenHtml(grp.spaeter,true);
+    if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
+    c.innerHTML=h||`<div class="leer"><b>Liste ist leer.</b>Unten eintippen oder das Mikrofon drücken.</div>`;
+    bindeAufgaben();
+  }
+
+  else if(ansicht==='bereiche'){
+    const bs=aktiv(doc.bereiche);
+    let h='';
+    if(bs.length){
+      h+='<ul>'+bs.map(b=>{
+        const n=offene.filter(a=>a.bereichId===b.id).length;
+        return `<li class="bereich" data-id="${b.id}">
+          <span class="punkt" style="background:${esc(b.farbe)}"></span>
+          <span class="nam">${esc(b.name)}</span>
+          <span class="anz">${n}</span>
+          <button class="stift" data-edit="${b.id}" aria-label="Bearbeiten">bearbeiten</button>
+        </li>`;}).join('')+'</ul>';
+    }
+    const ohneN=offene.filter(a=>!bereichVon(a.bereichId)).length;
+    if(ohneN) h+=`<ul><li class="bereich" data-id="__ohne">
+        <span class="punkt" style="background:#B8B8B8"></span>
+        <span class="nam">Ohne Bereich</span><span class="anz">${ohneN}</span></li></ul>`;
+    if(!h) h=`<div class="leer"><b>Noch keine Bereiche.</b>Zum Beispiel Arbeit, Privat, Studium.</div>`;
+    h+=`<div class="knopfreihe"><button class="knopf voll" id="neu-bereich">Bereich anlegen</button></div>`;
+    c.innerHTML=h;
+    c.querySelectorAll('li.bereich').forEach(li=>li.onclick=e=>{
+      if(e.target.dataset.edit){ blattBereich(bereichVon(e.target.dataset.edit)); return; }
+      offenerBereich=li.dataset.id; setzeAnsicht('bereich');
+    });
+    $('neu-bereich').onclick=()=>blattBereich(null);
+  }
+
+  else if(ansicht==='bereich'){
+    const b=offenerBereich==='__ohne'?null:bereichVon(offenerBereich);
+    if(offenerBereich!=='__ohne'&&!b){ offenerBereich=null; return setzeAnsicht('bereiche'); }
+    const liste=offene.filter(a=>offenerBereich==='__ohne'?!bereichVon(a.bereichId):a.bereichId===offenerBereich)
+      .sort((x,y)=>(x.faellig||'9999')<(y.faellig||'9999')?-1:1);
+    c.innerHTML=`<button class="zurueck" id="zur">&larr; Bereiche</button>
+      <div class="titelzeile">
+        <span class="punkt" style="width:14px;height:14px;background:${esc(b?b.farbe:'#B8B8B8')}"></span>
+        <h1>${esc(b?b.name:'Ohne Bereich')}</h1>
+        ${b?'<button class="stift" id="b-edit">bearbeiten</button>':''}
+      </div>`+
+      (liste.length?aufgabenHtml(liste,false):`<div class="leer"><b>Nichts offen.</b>In diesem Bereich ist alles erledigt.</div>`);
+    $('zur').onclick=()=>{ offenerBereich=null; setzeAnsicht('bereiche'); };
+    if(b) $('b-edit').onclick=()=>blattBereich(b);
+    bindeAufgaben();
+  }
+
+  else if(ansicht==='serien'){
+    const vs=aktiv(doc.vorlagen).sort((x,y)=>(x.naechster||'')<(y.naechster||'')?-1:1);
+    let h=vs.length?'<ul>'+vs.map(v=>{
+      const b=bereichVon(v.bereichId);
+      return `<li class="serie" data-id="${v.id}">
+        <div class="kopfz"><span class="punkt" style="background:${esc(b?b.farbe:'#B8B8B8')}"></span>
+        <span class="nam">${esc(v.text)}</span></div>
+        <div class="unten">${esc(rhythmusText(v.rhythmus))} &middot; nächster Termin ${esc(new Date(v.naechster+'T12:00:00').toLocaleDateString('de-DE'))} &middot; erscheint ${v.vorlauf??7} Tage vorher</div>
+      </li>`;}).join('')+'</ul>'
+      :`<div class="leer"><b>Keine Serien.</b>Wiederkehrendes wird hier gepflegt und taucht erst kurz vor dem Termin in der Liste auf.</div>`;
+    h+=`<div class="knopfreihe"><button class="knopf voll" id="neu-serie">Serie anlegen</button></div>`;
+    c.innerHTML=h;
+    c.querySelectorAll('li.serie').forEach(li=>li.onclick=()=>blattSerie(doc.vorlagen.find(v=>v.id===li.dataset.id)));
+    $('neu-serie').onclick=()=>blattSerie(null);
+  }
+
+  else if(ansicht==='erledigt'){
+    const fertig=aktiv(doc.aufgaben).filter(a=>a.erledigt).sort((x,y)=>(y.erledigtAm||0)-(x.erledigtAm||0));
+    c.innerHTML=(fertig.length?aufgabenHtml(fertig,true):`<div class="leer"><b>Noch nichts abgehakt.</b></div>`)
+      +(fertig.length?`<div class="knopfreihe"><button class="knopf leise" id="weg">Erledigte entfernen</button></div>`:'');
+    bindeAufgaben();
+    if(fertig.length) $('weg').onclick=()=>{ fertig.forEach(a=>{a.geloescht=true;a.ts=jetzt();}); geaendert(); };
+  }
+
+  $('leiste').style.display=(ansicht==='heute'||ansicht==='alle'||ansicht==='bereich')?'flex':'none';
+  zeichneZiel();
+}
+
+function zeichneZiel(){
+  const b=ansicht==='bereich'?(offenerBereich==='__ohne'?null:bereichVon(offenerBereich)):bereichVon(cfg.ziel);
+  $('ziel').innerHTML=`<span class="punkt" style="background:${esc(b?b.farbe:'#B8B8B8')}"></span>
+    Neue Aufgabe in: ${esc(b?b.name:'Ohne Bereich')}${ansicht==='bereich'?'':' &#9662;'}`;
+  $('ziel').style.display=ansicht==='bereich'?'none':'flex';
+}
+$('ziel').onclick=()=>blattZiel();
+
+/* ============ Blätter ============ */
+function blattAuf(html){
+  $('blatt').innerHTML=html;
+  $('blatt').classList.add('auf'); $('schleier').classList.add('auf');
+}
+function blattZu(){ $('blatt').classList.remove('auf'); $('schleier').classList.remove('auf'); }
+$('schleier').onclick=blattZu;
+
+function bereichOptionen(sel){
+  return `<option value="">Ohne Bereich</option>`+aktiv(doc.bereiche)
+    .map(b=>`<option value="${b.id}"${sel===b.id?' selected':''}>${esc(b.name)}</option>`).join('');
+}
+
+function blattAufgabe(a){
+  blattAuf(`<h3>Aufgabe</h3>
+    <label>Text</label><input type="text" id="f-text" value="${esc(a.text)}">
+    <label>Fällig am</label><input type="date" id="f-datum" value="${a.faellig||''}">
+    <div class="schnell">
+      <button data-t="0">Heute</button><button data-t="1">Morgen</button>
+      <button data-t="7">In einer Woche</button><button data-t="">Kein Datum</button>
+    </div>
+    <label>Bereich</label><select id="f-bereich">${bereichOptionen(a.bereichId)}</select>
+    <label>Notiz</label><textarea id="f-notiz" placeholder="Telefonnummer, Adresse, Details …">${esc(a.notiz)}</textarea>
+    ${a.vorlageId?`<p class="hinweis">Diese Aufgabe stammt aus einer Serie. Beim Abhaken wird automatisch der nächste Termin gesetzt.</p>`:''}
+    <div class="knopfreihe">
+      <button class="knopf voll" id="f-ok">Speichern</button>
+      <button class="knopf" id="f-ab">Abbrechen</button>
+      <button class="knopf leise" id="f-weg">Löschen</button>
+    </div>`);
+  $('blatt').querySelectorAll('.schnell button').forEach(b=>b.onclick=()=>{
+    $('f-datum').value=b.dataset.t===''?'':plusTage(isoHeute(),+b.dataset.t);
+  });
+  $('f-ok').onclick=()=>{
+    const t=$('f-text').value.trim(); if(t.length<1) return;
+    a.text=t; a.faellig=$('f-datum').value||null;
+    a.bereichId=$('f-bereich').value||null; a.notiz=$('f-notiz').value;
+    a.ts=jetzt(); blattZu(); geaendert();
+  };
+  $('f-ab').onclick=blattZu;
+  $('f-weg').onclick=()=>{ blattZu(); loeschen(a); };
+}
+
+function blattBereich(b){
+  const neu=!b;
+  const farbe=b?b.farbe:FARBEN[aktiv(doc.bereiche).length%FARBEN.length];
+  blattAuf(`<h3>${neu?'Neuer Bereich':'Bereich bearbeiten'}</h3>
+    <label>Name</label><input type="text" id="b-name" value="${b?esc(b.name):''}" placeholder="Arbeit, Privat, Studium …">
+    <label>Farbe</label>
+    <div class="farben">${FARBEN.map(f=>`<button class="farbe" data-f="${f}" style="background:${f}" aria-pressed="${f===farbe}" aria-label="Farbe"></button>`).join('')}</div>
+    <div class="knopfreihe">
+      <button class="knopf voll" id="b-ok">Speichern</button>
+      <button class="knopf" id="b-ab">Abbrechen</button>
+      ${neu?'':'<button class="knopf leise" id="b-weg">Löschen</button>'}
+    </div>
+    ${neu?'':'<p class="hinweis">Beim Löschen bleiben die Aufgaben erhalten und stehen danach unter „Ohne Bereich".</p>'}`);
+  let gewaehlt=farbe;
+  $('blatt').querySelectorAll('.farbe').forEach(k=>k.onclick=()=>{
+    gewaehlt=k.dataset.f;
+    $('blatt').querySelectorAll('.farbe').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.f===gewaehlt)));
+  });
+  $('b-ok').onclick=()=>{
+    const n=$('b-name').value.trim(); if(!n) return;
+    if(neu){ const nb={id:uid(),name:n,farbe:gewaehlt,ts:jetzt(),geloescht:false}; doc.bereiche.push(nb); if(!cfg.ziel) cfg.ziel=nb.id; }
+    else { b.name=n; b.farbe=gewaehlt; b.ts=jetzt(); }
+    blattZu(); geaendert();
+  };
+  $('b-ab').onclick=blattZu;
+  if(!neu) $('b-weg').onclick=()=>{
+    b.geloescht=true; b.ts=jetzt();
+    if(cfg.ziel===b.id) cfg.ziel=null;
+    if(offenerBereich===b.id){ offenerBereich=null; ansicht='bereiche'; }
+    blattZu(); geaendert();
+  };
+}
+
+function blattSerie(v){
+  const neu=!v;
+  const r=v?v.rhythmus:{typ:'monate',n:1};
+  blattAuf(`<h3>${neu?'Neue Serie':'Serie bearbeiten'}</h3>
+    <label>Aufgabe</label><input type="text" id="s-text" value="${v?esc(v.text):''}" placeholder="z. B. Monatsabrechnung erstellen">
+    <label>Bereich</label><select id="s-bereich">${bereichOptionen(v?v.bereichId:cfg.ziel)}</select>
+    <label>Wiederholung</label>
+    <div class="zwei">
+      <input type="number" id="s-n" min="1" max="99" value="${r.n||1}">
+      <select id="s-typ">
+        <option value="tage"${r.typ==='tage'?' selected':''}>Tage</option>
+        <option value="wochen"${r.typ==='wochen'?' selected':''}>Wochen</option>
+        <option value="monate"${r.typ==='monate'?' selected':''}>Monate</option>
+        <option value="jahre"${r.typ==='jahre'?' selected':''}>Jahre</option>
+      </select>
+    </div>
+    <label>Nächster Termin</label><input type="date" id="s-datum" value="${v?v.naechster:plusTage(isoHeute(),7)}">
+    <label>Erscheint in der Liste … Tage vorher</label><input type="number" id="s-vor" min="0" max="90" value="${v?(v.vorlauf??7):7}">
+    <label>Notiz</label><textarea id="s-notiz">${v?esc(v.notiz||''):''}</textarea>
+    <div class="knopfreihe">
+      <button class="knopf voll" id="s-ok">Speichern</button>
+      <button class="knopf" id="s-ab">Abbrechen</button>
+      ${neu?'':'<button class="knopf" id="s-skip">Termin überspringen</button><button class="knopf leise" id="s-weg">Löschen</button>'}
+    </div>`);
+  $('s-ok').onclick=()=>{
+    const t=$('s-text').value.trim(); if(t.length<2) return;
+    const daten={ text:t, bereichId:$('s-bereich').value||null,
+      rhythmus:{typ:$('s-typ').value,n:Math.max(1,parseInt($('s-n').value,10)||1)},
+      naechster:$('s-datum').value||plusTage(isoHeute(),7),
+      vorlauf:Math.max(0,parseInt($('s-vor').value,10)||0),
+      notiz:$('s-notiz').value, ts:jetzt(), geloescht:false };
+    if(neu) doc.vorlagen.push(Object.assign({id:uid(),aktivInstanz:null},daten));
+    else Object.assign(v,daten);
+    blattZu(); geaendert();
+  };
+  $('s-ab').onclick=blattZu;
+  if(!neu){
+    $('s-skip').onclick=()=>{
+      const inst=v.aktivInstanz?doc.aufgaben.find(a=>a.id===v.aktivInstanz):null;
+      if(inst&&!inst.erledigt){ inst.geloescht=true; inst.ts=jetzt(); }
+      v.aktivInstanz=null; v.naechster=naechsterTermin(v.naechster,v.rhythmus); v.ts=jetzt();
+      blattZu(); geaendert();
+    };
+    $('s-weg').onclick=()=>{ v.geloescht=true; v.ts=jetzt(); blattZu(); geaendert(); };
+  }
+}
+
+function blattZiel(){
+  blattAuf(`<h3>Neue Aufgaben ablegen in</h3>
+    <select id="z-b">${bereichOptionen(cfg.ziel)}</select>
+    <div class="knopfreihe"><button class="knopf voll" id="z-ok">Übernehmen</button>
+    <button class="knopf" id="z-ab">Abbrechen</button></div>`);
+  $('z-ok').onclick=()=>{ cfg.ziel=$('z-b').value||null; blattZu(); sichern(); zeichneZiel(); };
+  $('z-ab').onclick=blattZu;
+}
+
+/* ============ Eingabe ============ */
+$('eingabe').addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  const ziel=ansicht==='bereich'?(offenerBereich==='__ohne'?null:offenerBereich):cfg.ziel;
+  if(aufgabeAnlegen(e.target.value,ziel)) e.target.value='';
+});
+
+/* ============ Diktieren ============ */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let erk=null, hoert=false;
+function melde(t,ms){ const s=$('status'); s.textContent=t; clearTimeout(s._t); s._t=setTimeout(()=>{s.textContent='';},ms||3500); }
+
+if(!SR){
+  $('mik').style.opacity=.3;
+  $('mik').onclick=()=>melde('Diktieren geht in diesem Browser nicht – bitte Chrome oder Edge nutzen.',5000);
+}else{
+  erk=new SR(); erk.lang='de-DE'; erk.continuous=true; erk.interimResults=true;
+  erk.onresult=e=>{
+    let zwischen='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const s=e.results[i][0].transcript;
+      if(e.results[i].isFinal){
+        const ziel=ansicht==='bereich'?(offenerBereich==='__ohne'?null:offenerBereich):cfg.ziel;
+        aufgabeAnlegen(s,ziel);
+      } else zwischen+=s;
+    }
+    $('mitschrift').textContent=zwischen;
+  };
+  erk.onerror=e=>{
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+      diktatAus(); melde('Mikrofon ist blockiert. Bitte in den Browser-Einstellungen für diese Seite erlauben.',6000);
+    }
+  };
+  erk.onend=()=>{ if(hoert){ try{erk.start();}catch(e){} } else $('mitschrift').textContent=''; };
+  $('mik').onclick=()=>hoert?diktatAus():diktatAn();
+}
+function diktatAn(){ try{erk.start();}catch(e){} hoert=true; $('mik').classList.add('an'); melde('Ich höre zu. Nach jeder Sprechpause entsteht ein Punkt.',4000); }
+function diktatAus(){ hoert=false; $('mik').classList.remove('an'); try{erk.stop();}catch(e){} $('mitschrift').textContent=''; }
+
+/* ============ Abgleich ============ */
+let syncTimer=null, syncLaeuft=false;
+function planeSync(){ clearTimeout(syncTimer); syncTimer=setTimeout(sync,1500); }
+
+async function rpc(fn,body){
+  const basis=cfg.url.replace(/\/+$/,'');
+  const r=await fetch(basis+'/rest/v1/rpc/'+fn,{
+    method:'POST',
+    headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(await r.text());
+  const t=await r.text();
+  return t?JSON.parse(t):null;
+}
+function verschmelze(a,b){
+  const m=new Map();
+  [...(a||[]),...(b||[])].forEach(x=>{ if(!x||!x.id) return; const v=m.get(x.id); if(!v||(x.ts||0)>(v.ts||0)) m.set(x.id,x); });
+  return [...m.values()];
+}
+async function sync(still){
+  if(!cfg.url||!cfg.key||!cfg.code||syncLaeuft) return;
+  syncLaeuft=true;
+  try{
+    const fern=await rpc('sync_pull',{p_code:cfg.code})||{};
+    doc.bereiche=verschmelze(doc.bereiche,fern.bereiche);
+    doc.aufgaben=verschmelze(doc.aufgaben,fern.aufgaben);
+    doc.vorlagen=verschmelze(doc.vorlagen,fern.vorlagen);
+    serienPruefen(); sichern(); zeichnen();
+    const fernJson=JSON.stringify({bereiche:fern.bereiche||[],aufgaben:fern.aufgaben||[],vorlagen:fern.vorlagen||[]});
+    if(JSON.stringify(doc)!==fernJson) await rpc('sync_push',{p_code:cfg.code,p_doc:doc});
+    if(!still) melde('Abgeglichen um '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),2500);
+  }catch(e){
+    melde('Abgleich fehlgeschlagen. Einstellungen prüfen.',4000);
+  }finally{ syncLaeuft=false; }
+}
+
+/* ============ Einstellungen ============ */
+$('btn-einst').onclick=()=>{
+  blattAuf(`<h3>Einstellungen</h3>
+    <label>Supabase Projekt-URL</label>
+    <input type="text" id="e-url" value="${esc(cfg.url)}" placeholder="https://xxxx.supabase.co" autocapitalize="off" spellcheck="false">
+    <label>anon key</label>
+    <input type="text" id="e-key" value="${esc(cfg.key)}" placeholder="eyJhbGci…" autocapitalize="off" spellcheck="false">
+    <label>Sync-Code (auf allen Geräten identisch)</label>
+    <input type="text" id="e-code" value="${esc(cfg.code)}" placeholder="mindestens 12 Zeichen" autocapitalize="off" spellcheck="false">
+    <div class="schnell"><button id="e-gen">Code erzeugen</button><button id="e-kopie">Code kopieren</button></div>
+    <div class="knopfreihe">
+      <button class="knopf voll" id="e-ok">Speichern &amp; abgleichen</button>
+      <button class="knopf" id="e-ab">Schließen</button>
+    </div>
+    <label>Sicherungskopie</label>
+    <div class="schnell"><button id="e-exp">Als Datei sichern</button><button id="e-imp">Datei laden</button></div>
+    <p class="hinweis">Der Sync-Code ist das Passwort für deine Liste. Wer ihn kennt, sieht die Aufgaben.
+    Ohne Code bleibt alles nur auf diesem Gerät.</p>`);
+  $('e-gen').onclick=()=>{
+    const z='abcdefghijkmnpqrstuvwxyz23456789'; let s='';
+    const a=new Uint8Array(20); crypto.getRandomValues(a);
+    a.forEach(x=>s+=z[x%z.length]);
+    $('e-code').value=s;
+  };
+  $('e-kopie').onclick=async()=>{
+    try{ await navigator.clipboard.writeText($('e-code').value); melde('Code kopiert.',2000); }
+    catch(e){ $('e-code').select(); }
+  };
+  $('e-ok').onclick=()=>{
+    cfg.url=$('e-url').value.trim(); cfg.key=$('e-key').value.trim(); cfg.code=$('e-code').value.trim();
+    sichern(); blattZu();
+    if(cfg.url&&cfg.key&&cfg.code) sync(); else melde('Gespeichert. Abgleich ist noch nicht eingerichtet.',3000);
+  };
+  $('e-ab').onclick=blattZu;
+  $('e-exp').onclick=()=>{
+    const b=new Blob([JSON.stringify(doc,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download='todo-'+isoHeute()+'.json'; a.click(); URL.revokeObjectURL(a.href);
+  };
+  $('e-imp').onclick=()=>$('datei').click();
+};
+$('datei').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const n=JSON.parse(r.result);
+      doc.bereiche=verschmelze(doc.bereiche,n.bereiche);
+      doc.aufgaben=verschmelze(doc.aufgaben,n.aufgaben);
+      doc.vorlagen=verschmelze(doc.vorlagen,n.vorlagen);
+      blattZu(); geaendert(); melde('Daten übernommen.',2500);
+    }catch(err){ melde('Diese Datei passt nicht.',3000); }
+  };
+  r.readAsText(f); e.target.value='';
+};
+
+/* ============ Teilen-Ziel / Start ============ */
+(function start(){
+  const p=new URLSearchParams(location.search);
+  const geteilt=[p.get('title'),p.get('text'),p.get('url')].filter(Boolean).join(' ').trim();
+  if(geteilt){ aufgabeAnlegen(geteilt,cfg.ziel); history.replaceState({},'',location.pathname); }
+  ansicht=cfg.ansicht||'heute';
+  if(ansicht==='bereich') ansicht='bereiche';
+  $('logo').onclick=()=>{ offenerBereich=null; setzeAnsicht('heute'); };
+  zeichnen();
+  sync(true);
+})();
+
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ zeichnen(); sync(true); } });
+setInterval(()=>{ if(!document.hidden) sync(true); },45000);
+</script>
+</body>
+</html>

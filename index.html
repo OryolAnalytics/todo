@@ -14,12 +14,33 @@
 <style>
   :root{
     --tinte:#111111;
+    --papier:#FFFFFF;
     --grau:#767676;
     --linie:#DEDEDE;
     --feld:#F7F7F7;
+    --auswahl:#EFEFEF;
+    --warn:#B03A2E;
+    --schleier:rgba(0,0,0,.35);
+    --schatten:rgba(0,0,0,.12);
   }
+  html[data-thema="dunkel"]{
+    --tinte:#E9E9E5;
+    --papier:#131313;
+    --grau:#8C8C86;
+    --linie:#2E2E2C;
+    --feld:#1D1D1B;
+    --auswahl:#262624;
+    --warn:#E88075;
+    --schleier:rgba(0,0,0,.6);
+    --schatten:rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+  /* Bereichsfarben sind für weißen Grund gewählt; dunkel brauchen sie mehr Leuchtkraft */
+  html[data-thema="dunkel"] .punkt,
+  html[data-thema="dunkel"] .kasten,
+  html[data-thema="dunkel"] .farbe{filter:brightness(1.45) saturate(1.05)}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;padding:0;background:#fff}
+  html,body{margin:0;padding:0;background:var(--papier)}
   body{
     font-family:"Times New Roman",Times,Liberation Serif,serif;
     color:var(--tinte);font-size:18px;line-height:1.4;
@@ -58,11 +79,11 @@
   li.auf{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--linie)}
   .kasten{
     flex:0 0 auto;width:20px;height:20px;margin-top:3px;border:1.5px solid var(--grau);
-    background:#fff;cursor:pointer;padding:0;position:relative;border-radius:3px;
+    background:var(--papier);cursor:pointer;padding:0;position:relative;border-radius:3px;
   }
   .kasten::after{
     content:"";position:absolute;left:5px;top:2px;width:6px;height:11px;
-    border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg) scale(0);
+    border:solid var(--papier);border-width:0 2px 2px 0;transform:rotate(42deg) scale(0);
     transition:transform .16s ease;
   }
   li.fertig .kasten::after{transform:rotate(42deg) scale(1)}
@@ -72,7 +93,7 @@
   .unten{font-size:14px;color:var(--grau);margin-top:1px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .bereichs-tag{display:inline-flex;align-items:center;gap:5px}
   .punkt{width:9px;height:9px;border-radius:50%;flex:0 0 auto;display:inline-block}
-  .faellig.warn{color:#B03A2E}
+  .faellig.warn{color:var(--warn)}
   .faellig.heute{color:var(--tinte)}
   .notizzeichen{font-style:italic}
   .griff{
@@ -98,7 +119,7 @@
   .leer{padding:36px 2px;color:var(--grau)}
   #notizfeld{
     width:100%;min-height:calc(100vh - 300px);font-size:17px;line-height:1.5;
-    background:#fff;border:1px solid var(--linie);border-radius:5px;padding:14px;
+    background:var(--papier);border:1px solid var(--linie);border-radius:5px;padding:14px;
     outline:none;resize:vertical;
   }
   #notizfeld:focus{border-color:var(--tinte)}
@@ -126,16 +147,16 @@
   .titelzeile h1{font-size:26px;font-weight:normal;margin:0;flex:1}
 
   .knopf{
-    background:#fff;border:1px solid var(--tinte);border-radius:4px;padding:9px 16px;
+    background:var(--papier);border:1px solid var(--tinte);border-radius:4px;padding:9px 16px;
     font-size:16px;cursor:pointer;
   }
-  .knopf.voll{background:var(--tinte);color:#fff}
+  .knopf.voll{background:var(--tinte);color:var(--papier)}
   .knopf.leise{border-color:var(--linie);color:var(--grau)}
   .knopfreihe{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
 
   /* Eingabeleiste */
   .leiste{
-    position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--linie);
+    position:fixed;left:0;right:0;bottom:0;background:var(--papier);border-top:1px solid var(--linie);
     padding:10px 18px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:center;
   }
   .leiste-inner{width:100%;max-width:640px}
@@ -151,23 +172,24 @@
   textarea{resize:vertical;min-height:80px;line-height:1.4}
   .mik{
     flex:0 0 auto;width:50px;height:50px;border-radius:50%;background:var(--tinte);border:0;
-    cursor:pointer;position:relative;display:grid;place-items:center;
+    cursor:pointer;position:relative;display:grid;place-items:center;color:var(--papier);
   }
+  .mik.an{color:#fff}
   .mik svg{width:22px;height:22px;position:relative;z-index:1}
-  .mik .welle{position:absolute;inset:0;border-radius:50%;background:#B03A2E;opacity:0}
-  .mik.an{background:#B03A2E}
+  .mik .welle{position:absolute;inset:0;border-radius:50%;background:var(--warn);opacity:0}
+  .mik.an{background:var(--warn)}
   .mik.an .welle{animation:welle 1.5s ease-out infinite}
   @keyframes welle{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.7);opacity:0}}
   .mitschrift{font-style:italic;color:var(--grau);min-height:0;font-size:15px;padding:0 0 6px}
 
   /* Blatt (Dialog) */
-  .schleier{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;z-index:20}
+  .schleier{position:fixed;inset:0;background:var(--schleier);display:none;z-index:20}
   .schleier.auf{display:block}
   .blatt{
-    position:fixed;left:0;right:0;bottom:0;background:#fff;z-index:21;
+    position:fixed;left:0;right:0;bottom:0;background:var(--papier);z-index:21;
     border-radius:12px 12px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));
     max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .22s ease;
-    box-shadow:0 -4px 24px rgba(0,0,0,.12);
+    box-shadow:0 -4px 24px var(--schatten);
   }
   .blatt.auf{transform:none}
   @media(min-width:680px){
@@ -179,9 +201,16 @@
   label{display:block;font-size:14px;color:var(--grau);margin:14px 0 5px}
   label:first-of-type{margin-top:0}
   .farben{display:flex;gap:10px;flex-wrap:wrap}
-  .farbe{width:34px;height:34px;border-radius:50%;border:2px solid #fff;cursor:pointer;
+  .farbe{width:34px;height:34px;border-radius:50%;border:2px solid var(--papier);cursor:pointer;
          box-shadow:0 0 0 1px var(--linie)}
   .farbe[aria-pressed="true"]{box-shadow:0 0 0 2px var(--tinte)}
+  .wahl{display:flex;gap:8px}
+  .wahl button{
+    flex:1;background:var(--papier);border:1px solid var(--linie);border-radius:5px;
+    padding:10px;font-size:16px;cursor:pointer;color:var(--grau);
+  }
+  .wahl button[aria-pressed="true"]{border-color:var(--tinte);color:var(--tinte);background:var(--feld)}
+  input:disabled{color:var(--grau);opacity:.75;cursor:not-allowed}
   .schnell{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .schnell button{background:var(--feld);border:1px solid var(--linie);border-radius:20px;
                   padding:6px 13px;font-size:14px;cursor:pointer;color:var(--grau)}
@@ -212,7 +241,7 @@
       border:0;padding:8px 10px;border-radius:5px;cursor:pointer;font-size:17px;color:var(--tinte);
     }
     .s-nav button:hover{background:var(--feld)}
-    .s-nav button[aria-current="true"]{background:#EFEFEF}
+    .s-nav button[aria-current="true"]{background:var(--auswahl)}
     .s-nav button .nam{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .s-nav button em{font-style:normal;font-size:14px;color:var(--grau)}
     .s-titel{
@@ -256,8 +285,8 @@
       <input type="text" id="eingabe" placeholder="Aufgabe eintippen und Enter" autocomplete="off">
       <button class="mik" id="mik" aria-label="Diktieren">
         <span class="welle"></span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
-          <rect x="9" y="2" width="6" height="11" rx="3" fill="#fff" stroke="none"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="9" y="2" width="6" height="11" rx="3" fill="currentColor" stroke="none"/>
           <path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4"/>
         </svg>
       </button>
@@ -286,7 +315,7 @@ const DOC_KEY='todo.doc.v1', CFG_KEY='todo.cfg.v1';
 const FARBEN=['#B03A2E','#CA6F1E','#B7950B','#1E8449','#0E8074','#1F6FB2','#34495E','#6C3483','#A5468B','#5D6D7E'];
 
 let doc={bereiche:[],aufgaben:[],vorlagen:[],notiz:{text:'',ts:0},dateien:[]};
-let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute'};
+let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell'};
 let ansicht='heute', offenerBereich=null, notizUhr=null;
 
 try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[],notiz:(d.notiz&&typeof d.notiz==='object')?d.notiz:{text:'',ts:0},dateien:d.dateien||[]}; }catch(e){}
@@ -298,6 +327,14 @@ const jetzt=()=>Date.now();
 const aktiv=liste=>liste.filter(x=>!x.geloescht);
 const sichern=()=>{ LS.setItem(DOC_KEY,JSON.stringify(doc)); LS.setItem(CFG_KEY,JSON.stringify(cfg)); };
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function setzeThema(t){
+  cfg.thema=(t==='dunkel')?'dunkel':'hell';
+  document.documentElement.setAttribute('data-thema',cfg.thema);
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content',cfg.thema==='dunkel'?'#131313':'#FFFFFF');
+  sichern();
+}
 
 /* ============ Datum ============ */
 function isoVon(d){ const x=new Date(d); x.setMinutes(x.getMinutes()-x.getTimezoneOffset()); return x.toISOString().slice(0,10); }
@@ -1114,22 +1151,66 @@ async function sync(still){
 
 /* ============ Einstellungen ============ */
 $('btn-einst').onclick=()=>{
+  const verbunden=!!(cfg.url&&cfg.key&&cfg.code);
   blattAuf(`<h3>Einstellungen</h3>
-    <label>Supabase Projekt-URL</label>
-    <input type="text" id="e-url" value="${esc(cfg.url)}" placeholder="https://xxxx.supabase.co" autocapitalize="off" spellcheck="false">
-    <label>anon key</label>
-    <input type="text" id="e-key" value="${esc(cfg.key)}" placeholder="eyJhbGci…" autocapitalize="off" spellcheck="false">
-    <label>Sync-Code (auf allen Geräten identisch)</label>
-    <input type="text" id="e-code" value="${esc(cfg.code)}" placeholder="mindestens 12 Zeichen" autocapitalize="off" spellcheck="false">
-    <div class="schnell"><button id="e-gen">Code erzeugen</button><button id="e-kopie">Code kopieren</button></div>
-    <div class="knopfreihe">
-      <button class="knopf voll" id="e-ok">Speichern &amp; abgleichen</button>
-      <button class="knopf" id="e-ab">Schließen</button>
+    <label>Erscheinungsbild</label>
+    <div class="wahl">
+      <button data-t="hell" aria-pressed="${cfg.thema!=='dunkel'}">Hell</button>
+      <button data-t="dunkel" aria-pressed="${cfg.thema==='dunkel'}">Dunkel</button>
     </div>
     <label>Sicherungskopie</label>
     <div class="schnell"><button id="e-exp">Als Datei sichern</button><button id="e-imp">Datei laden</button></div>
-    <p class="hinweis">Der Sync-Code ist das Passwort für deine Liste. Wer ihn kennt, sieht die Aufgaben.
-    Ohne Code bleibt alles nur auf diesem Gerät.</p>`);
+    <label>Abgleich</label>
+    <p class="hinweis" style="margin:0 0 10px">${verbunden?'Eingerichtet und aktiv.':'Noch nicht eingerichtet.'}</p>
+    <div class="knopfreihe" style="margin-top:0">
+      ${verbunden?'<button class="knopf" id="e-jetzt">Jetzt abgleichen</button>':''}
+      <button class="knopf leise" id="e-zeig">Zugangsdaten …</button>
+    </div>
+    <div class="knopfreihe"><button class="knopf voll" id="e-ab">Schließen</button></div>`);
+
+  $('blatt').querySelectorAll('.wahl button').forEach(b=>b.onclick=()=>{
+    setzeThema(b.dataset.t);
+    $('blatt').querySelectorAll('.wahl button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.t===cfg.thema)));
+  });
+  $('e-exp').onclick=()=>{
+    const b=new Blob([JSON.stringify(doc,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download='todo-'+isoHeute()+'.json'; a.click(); URL.revokeObjectURL(a.href);
+  };
+  $('e-imp').onclick=()=>$('datei').click();
+  if(verbunden) $('e-jetzt').onclick=()=>{ blattZu(); sync(); };
+  $('e-zeig').onclick=blattZugang;
+  $('e-ab').onclick=blattZu;
+};
+
+function blattZugang(){
+  blattAuf(`<h3>Zugangsdaten</h3>
+    <p class="hinweis" style="margin:0 0 14px">Diese Angaben verbinden Handy und Rechner.
+    Bitte nur ändern, wenn du weißt, was du tust – ohne sie ist kein Abgleich möglich.</p>
+    <div class="knopfreihe" style="margin-top:0"><button class="knopf" id="z-frei">Zum Bearbeiten freigeben</button>
+    <button class="knopf voll" id="z-zurueck">Zurück</button></div>
+    <div id="z-feld" hidden>
+      <label>Supabase Projekt-URL</label>
+      <input type="text" id="e-url" value="${esc(cfg.url)}" placeholder="https://xxxx.supabase.co" autocapitalize="off" spellcheck="false" disabled>
+      <label>anon key</label>
+      <input type="text" id="e-key" value="${esc(cfg.key)}" placeholder="eyJhbGci…" autocapitalize="off" spellcheck="false" disabled>
+      <label>Sync-Code (auf allen Geräten identisch)</label>
+      <input type="text" id="e-code" value="${esc(cfg.code)}" placeholder="mindestens 12 Zeichen" autocapitalize="off" spellcheck="false" disabled>
+      <div class="schnell"><button id="e-gen">Code erzeugen</button><button id="e-kopie">Code kopieren</button></div>
+      <div class="knopfreihe">
+        <button class="knopf voll" id="e-ok">Speichern &amp; abgleichen</button>
+        <button class="knopf" id="e-verwerf">Verwerfen</button>
+      </div>
+      <p class="hinweis">Der Sync-Code ist das Passwort für deine Liste. Wer ihn kennt, sieht die Aufgaben.
+      Notiere ihn dir an einem sicheren Ort.</p>
+    </div>`);
+
+  $('z-zurueck').onclick=()=>$('btn-einst').click();
+  $('z-frei').onclick=()=>{
+    $('z-feld').hidden=false;
+    ['e-url','e-key','e-code'].forEach(i=>$(i).disabled=false);
+    $('z-frei').remove();
+  };
   $('e-gen').onclick=()=>{
     const z='abcdefghijkmnpqrstuvwxyz23456789'; let s='';
     const a=new Uint8Array(20); crypto.getRandomValues(a);
@@ -1140,19 +1221,15 @@ $('btn-einst').onclick=()=>{
     try{ await navigator.clipboard.writeText($('e-code').value); melde('Code kopiert.',2000); }
     catch(e){ $('e-code').select(); }
   };
+  $('e-verwerf').onclick=()=>$('btn-einst').click();
   $('e-ok').onclick=()=>{
-    cfg.url=$('e-url').value.trim(); cfg.key=$('e-key').value.trim(); cfg.code=$('e-code').value.trim();
+    const u=$('e-url').value.trim(), k=$('e-key').value.trim(), co=$('e-code').value.trim();
+    if(co&&co.length<12) return melde('Der Sync-Code muss mindestens 12 Zeichen haben.',4000);
+    cfg.url=u; cfg.key=k; cfg.code=co;
     sichern(); blattZu();
     if(cfg.url&&cfg.key&&cfg.code) sync(); else melde('Gespeichert. Abgleich ist noch nicht eingerichtet.',3000);
   };
-  $('e-ab').onclick=blattZu;
-  $('e-exp').onclick=()=>{
-    const b=new Blob([JSON.stringify(doc,null,2)],{type:'application/json'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
-    a.download='todo-'+isoHeute()+'.json'; a.click(); URL.revokeObjectURL(a.href);
-  };
-  $('e-imp').onclick=()=>$('datei').click();
-};
+}
 $('datei').onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
@@ -1171,6 +1248,7 @@ $('datei').onchange=e=>{
 
 /* ============ Teilen-Ziel / Start ============ */
 (function start(){
+  setzeThema(cfg.thema);
   doc.aufgaben.forEach((a,i)=>{ if(typeof a.pos!=='number') a.pos=i*10; });
   const p=new URLSearchParams(location.search);
   const geteilt=[p.get('title'),p.get('text'),p.get('url')].filter(Boolean).join(' ').trim();

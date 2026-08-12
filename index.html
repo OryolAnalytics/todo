@@ -141,6 +141,7 @@
   .leiste-inner{width:100%;max-width:640px}
   .ziel{display:flex;align-items:center;gap:7px;font-size:14px;color:var(--grau);
         background:none;border:0;padding:0 0 7px;cursor:pointer}
+  .ziel em{font-style:normal;font-size:12.5px;opacity:.6;margin-left:2px}
   .reihe{display:flex;gap:10px;align-items:center}
   input[type=text],input[type=date],input[type=number],select,textarea{
     width:100%;font-size:16px;background:var(--feld);border:1px solid var(--linie);
@@ -820,11 +821,20 @@ function zeichnen(){
 
 function zeichneZiel(){
   const b=ansicht==='bereich'?(offenerBereich==='__ohne'?null:bereichVon(offenerBereich)):bereichVon(cfg.ziel);
+  const mehrere=aktiv(doc.bereiche).length>0;
   $('ziel').innerHTML=`<span class="punkt" style="background:${esc(b?b.farbe:'#B8B8B8')}"></span>
-    Neue Aufgabe in: ${esc(b?b.name:'Ohne Bereich')}${ansicht==='bereich'?'':' &#9662;'}`;
+    Neue Aufgabe in: ${esc(b?b.name:'Ohne Bereich')}${ansicht==='bereich'?'':(mehrere?' <em>tippen zum Wechseln</em>':'')}`;
   $('ziel').style.display=ansicht==='bereich'?'none':'flex';
 }
-$('ziel').onclick=()=>blattZiel();
+$('ziel').onclick=()=>{
+  const bs=aktiv(doc.bereiche);
+  if(!bs.length) return blattBereich(null);
+  const kette=[...bs.map(b=>b.id),null];        // am Ende "Ohne Bereich"
+  const i=kette.indexOf(cfg.ziel??null);
+  cfg.ziel=kette[(i+1)%kette.length];
+  sichern(); zeichneZiel();
+};
+$('ziel').oncontextmenu=e=>{ e.preventDefault(); blattZiel(); };
 
 /* ============ Blätter ============ */
 function blattAuf(html){

@@ -193,6 +193,7 @@
     box-shadow:0 -4px 24px var(--schatten);
   }
   .blatt.auf{transform:none}
+  .blatt.taub{pointer-events:none}
   @media(min-width:680px){
     .blatt{left:50%;right:auto;bottom:auto;top:50%;width:560px;max-width:92vw;
            transform:translate(-50%,-42%) scale(.97);opacity:0;border-radius:10px;transition:.18s ease}
@@ -911,12 +912,33 @@ $('ziel').onclick=()=>{
 $('ziel').oncontextmenu=e=>{ e.preventDefault(); blattZiel(); };
 
 /* ============ Blätter ============ */
+let blattOffenSeit=0, blattSperre=null;
 function blattAuf(html){
-  $('blatt').innerHTML=html;
-  $('blatt').classList.add('auf'); $('schleier').classList.add('auf');
+  const b=$('blatt'), s=$('schleier');
+  b.innerHTML=html;
+  b.classList.add('auf'); s.classList.add('auf');
+  /* Das Blatt fährt von unten herein und liegt danach unter dem Finger, der es
+     geöffnet hat. Ohne diese kurze Sperre löst derselbe Tipp dort gleich noch
+     ein Feld aus – etwa die Bereichsauswahl. */
+  blattOffenSeit=jetzt();
+  b.classList.add('taub');
+  clearTimeout(blattSperre);
+  blattSperre=setTimeout(()=>{ b.classList.remove('taub'); },450);
 }
-function blattZu(){ $('blatt').classList.remove('auf'); $('schleier').classList.remove('auf'); }
-$('schleier').onclick=blattZu;
+function blattZu(){
+  clearTimeout(blattSperre);
+  $('blatt').classList.remove('auf','taub');
+  $('schleier').classList.remove('auf');
+  blattOffenSeit=0;
+}
+$('schleier').onclick=()=>{ if(jetzt()-blattOffenSeit<450) return; blattZu(); };
+
+/* Zweite Absicherung neben pointer-events: Ereignisse, die in den ersten
+   Millisekunden im Blatt landen, stammen noch vom öffnenden Tipp. */
+['pointerdown','mousedown','touchstart','click'].forEach(t=>
+  $('blatt').addEventListener(t,e=>{
+    if(blattOffenSeit&&jetzt()-blattOffenSeit<450){ e.stopPropagation(); e.preventDefault(); }
+  },true));
 
 function bereichOptionen(sel){
   return `<option value="">Ohne Bereich</option>`+aktiv(doc.bereiche)

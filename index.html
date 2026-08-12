@@ -76,7 +76,7 @@
 
   /* Aufgaben */
   ul{list-style:none;margin:0;padding:0}
-  li.auf{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--linie)}
+  li.auf{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--linie);cursor:pointer}
   .kasten{
     flex:0 0 auto;width:20px;height:20px;margin-top:3px;border:1.5px solid var(--grau);
     background:var(--papier);cursor:pointer;padding:0;position:relative;border-radius:3px;
@@ -87,7 +87,8 @@
     transition:transform .16s ease;
   }
   li.fertig .kasten::after{transform:rotate(42deg) scale(1)}
-  .mitte{flex:1;min-width:0;cursor:pointer}
+  .mitte{flex:1;min-width:0}
+  .kasten::before{content:"";position:absolute;left:-10px;right:-8px;top:-10px;bottom:-10px}
   .titel{word-break:break-word}
   li.fertig .titel{color:var(--grau);text-decoration:line-through}
   .unten{font-size:14px;color:var(--grau);margin-top:1px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -660,12 +661,22 @@ function aufgabenHtml(liste,zeigeBereich){
 function bindeAufgaben(){
   document.querySelectorAll('li.auf').forEach(li=>{
     const a=doc.aufgaben.find(x=>x.id===li.dataset.id); if(!a) return;
-    li.querySelector('.kasten').onclick=()=>abhaken(a);
-    li.querySelector('.mitte').onclick=()=>blattAufgabe(a);
+    li.querySelector('.kasten').onclick=e=>{ e.stopPropagation(); abhaken(a); };
     const griff=li.querySelector('.griff');
-    if(griff) griff.addEventListener('pointerdown',e=>ziehenStart(e,li));
+    if(griff){
+      griff.addEventListener('pointerdown',e=>ziehenStart(e,li));
+      griff.addEventListener('click',e=>e.stopPropagation());
+    }
+    /* die gesamte Zeile öffnet die Aufgabe – außer Kästchen und Griff,
+       und nicht direkt nach dem Verschieben */
+    li.onclick=e=>{
+      if(e.target.closest('.kasten')||e.target.closest('.griff')) return;
+      if(jetzt()-letztesZiehen<350) return;
+      blattAufgabe(a);
+    };
   });
 }
+let letztesZiehen=0;
 
 /* eigene Reihenfolge: Ziehen am Griff */
 function sortiert(liste){ return liste.slice().sort((x,y)=>(x.pos??0)-(y.pos??0)); }
@@ -694,6 +705,7 @@ function ziehenStart(e,li){
   };
   const ende=()=>{
     clearTimeout(rollUhr);
+    letztesZiehen=jetzt();
     document.removeEventListener('pointermove',bewege);
     document.removeEventListener('pointerup',ende);
     document.removeEventListener('pointercancel',ende);

@@ -407,16 +407,41 @@ function serieWeiter(vid){
   v.naechster=naechsterTermin(v.naechster,v.rhythmus);
   v.aktivInstanz=null; v.ts=jetzt();
 }
+/* Die Kennung einer Serien-Aufgabe wird aus Vorlage und Termin gebildet, nicht zufällig.
+   Damit erzeugen zwei Geräte, die dieselbe Aufgabe unabhängig anlegen, dieselbe Kennung –
+   beim Abgleich werden sie zu einer einzigen zusammengeführt statt vervielfacht. */
+function serienId(v){ return 's_'+v.id+'_'+v.naechster; }
+
+function serienPutzen(){
+  const gesehen=new Map(); let weg=false;
+  doc.aufgaben.forEach(a=>{
+    if(a.geloescht||!a.vorlageId) return;
+    const s=a.vorlageId+'|'+(a.faellig||'');
+    const alt=gesehen.get(s);
+    if(!alt){ gesehen.set(s,a); return; }
+    /* Doppelt: die abgehakte bzw. ältere Fassung behalten, die andere entfernen */
+    const behalten=(alt.erledigt&&!a.erledigt)?alt:(a.erledigt&&!alt.erledigt)?a:((alt.ts||0)<=(a.ts||0)?alt:a);
+    const raus=behalten===alt?a:alt;
+    raus.geloescht=true; raus.ts=jetzt(); weg=true;
+    gesehen.set(s,behalten);
+    const v=doc.vorlagen.find(x=>x.id===behalten.vorlageId);
+    if(v&&v.aktivInstanz===raus.id){ v.aktivInstanz=behalten.id; v.ts=jetzt(); }
+  });
+  return weg;
+}
+
 function serienPruefen(){
-  let neu=false;
+  let neu=serienPutzen();
   aktiv(doc.vorlagen).forEach(v=>{
     if(!v.naechster||!v.rhythmus) return;
     const inst=v.aktivInstanz?doc.aufgaben.find(a=>a.id===v.aktivInstanz&&!a.geloescht&&!a.erledigt):null;
     if(inst) return;
     if(tageBis(v.naechster)>(v.vorlauf??7)) return;
-    const dop=doc.aufgaben.find(a=>!a.geloescht&&!a.erledigt&&a.vorlageId===v.id&&a.faellig===v.naechster);
-    if(dop){ v.aktivInstanz=dop.id; v.ts=jetzt(); neu=true; return; }
-    const a={ id:uid(), text:v.text, notiz:v.notiz||'', faellig:v.naechster, erledigt:false, erledigtAm:null,
+    const id=serienId(v);
+    /* auch abgehakte Fassungen zählen – sonst entsteht sie nach dem Abhaken erneut */
+    const dop=doc.aufgaben.find(a=>!a.geloescht&&(a.id===id||(a.vorlageId===v.id&&a.faellig===v.naechster)));
+    if(dop){ if(!dop.erledigt&&v.aktivInstanz!==dop.id){ v.aktivInstanz=dop.id; v.ts=jetzt(); neu=true; } return; }
+    const a={ id, text:v.text, notiz:v.notiz||'', faellig:v.naechster, erledigt:false, erledigtAm:null,
               bereichId:v.bereichId, vorlageId:v.id,
               pos:Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0))-10,
               ts:jetzt(), geloescht:false };

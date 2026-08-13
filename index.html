@@ -222,7 +222,8 @@
   .zwei>*{flex:1}
   .hinweis{font-size:14px;color:var(--grau);margin:10px 0 0;line-height:1.35}
   .status{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));
-          text-align:center;font-size:14px;color:var(--grau);pointer-events:none;z-index:10}
+          text-align:center;font-size:14px;color:var(--grau);pointer-events:none;z-index:30;
+          padding:0 18px}
   :focus-visible{outline:2px solid var(--tinte);outline-offset:2px}
 
   /* ===== Desktop: Seitenleiste statt Reiter ===== */
@@ -1247,29 +1248,59 @@ function swKonfigSenden(){
   navigator.serviceWorker.controller.postMessage({typ:'cfg',cfg:{url:cfg.url,key:cfg.key,code:cfg.code}});
 }
 
+function pushMelde(t){
+  const s=$('e-pushstand');
+  if(s) s.textContent=t;
+  melde(t,7000);
+}
+
 async function pushAnmelden(){
-  if(!pushMoeglich()) return melde('Dieser Browser kann keine Erinnerungen anzeigen.',5000);
-  if(!speicherBereit()) return melde('Erst den Abgleich einrichten.',4000);
-  if(!cfg.vapid) return melde('Es fehlt der öffentliche Schlüssel unter Zugangsdaten.',6000);
-  const erlaubnis=await Notification.requestPermission();
-  if(erlaubnis!=='granted') return melde('Benachrichtigungen wurden abgelehnt. In den Browser-Einstellungen für diese Seite erlauben.',7000);
-  const reg=swReg||await swStarten();
-  if(!reg) return melde('Der Hintergrunddienst ließ sich nicht starten.',5000);
+  if(!pushMoeglich()) return pushMelde('Dieser Browser kann keine Erinnerungen anzeigen.');
+  if(!speicherBereit()) return pushMelde('Erst den Abgleich einrichten.');
+  if(!cfg.vapid) return pushMelde('Es fehlt der öffentliche Schlüssel unter Zugangsdaten.');
+  if(location.protocol!=='https:'&&location.hostname!=='localhost')
+    return pushMelde('Erinnerungen brauchen eine https-Adresse.');
+
+  pushMelde('Wird eingerichtet …');
+  let erlaubnis;
+  try{ erlaubnis=await Notification.requestPermission(); }
+  catch(e){ return pushMelde('Die Nachfrage nach der Erlaubnis schlug fehl: '+(e&&e.message||e)); }
+  if(erlaubnis!=='granted')
+    return pushMelde('Benachrichtigungen wurden abgelehnt. In den Chrome-Einstellungen für diese Seite erlauben.');
+
+  let reg;
   try{
-    let ab=await reg.pushManager.getSubscription();
+    reg=await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.ready;
+    swReg=reg;
+  }catch(e){
+    return pushMelde('Der Hintergrunddienst (sw.js) ließ sich nicht laden: '+(e&&e.message||e));
+  }
+
+  let ab;
+  try{
+    ab=await reg.pushManager.getSubscription();
     if(ab){
       const alt=bytesZuB64(ab.options.applicationServerKey||new ArrayBuffer(0));
       if(alt!==cfg.vapid){ await ab.unsubscribe(); ab=null; }
     }
     if(!ab) ab=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64zuBytes(cfg.vapid)});
+  }catch(e){
+    return pushMelde('Anmeldung beim Push-Dienst fehlgeschlagen – meist stimmt der öffentliche Schlüssel nicht: '+(e&&e.message||e));
+  }
+
+  try{
     const j=ab.toJSON();
     await rpc('push_anmelden',{p_code:cfg.code,p_endpoint:j.endpoint,
       p_p256dh:j.keys?j.keys.p256dh:'',p_auth:j.keys?j.keys.auth:'',
       p_geraet:(navigator.userAgent.match(/Android|iPhone|iPad|Macintosh|Windows/)||['Gerät'])[0]});
-    cfg.push=true; sichern(); swKonfigSenden();
-    melde('Erinnerungen sind auf diesem Gerät aktiv.',4000);
-    blattZu();
-  }catch(e){ melde('Anmeldung fehlgeschlagen: '+(e&&e.message?e.message:'unbekannt'),6000); }
+  }catch(e){
+    return pushMelde('Das Gerät ließ sich nicht in der Datenbank vermerken. Wurde push_setup.sql ausgeführt? '+(e&&e.message||e));
+  }
+
+  cfg.push=true; sichern(); swKonfigSenden();
+  melde('Erinnerungen sind auf diesem Gerät aktiv.',4000);
+  blattZu();
 }
 
 async function pushAbmelden(){

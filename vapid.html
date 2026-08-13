@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schlüssel für Erinnerungen</title>
+<style>
+  body{font-family:"Times New Roman",Times,serif;background:#fff;color:#111;
+       max-width:640px;margin:0 auto;padding:28px 20px 60px;font-size:18px;line-height:1.45}
+  h1{font-size:30px;font-weight:normal;margin:0 0 6px}
+  p{color:#555}
+  button{font-family:inherit;font-size:17px;background:#111;color:#fff;border:0;
+         border-radius:5px;padding:11px 20px;cursor:pointer}
+  button.leise{background:#fff;color:#111;border:1px solid #DEDEDE;font-size:15px;padding:6px 13px}
+  label{display:block;font-size:14px;color:#767676;margin:22px 0 5px}
+  textarea{width:100%;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.4;
+           border:1px solid #DEDEDE;border-radius:5px;padding:11px;resize:vertical;background:#F7F7F7}
+  .warn{border-left:3px solid #B03A2E;padding:10px 14px;background:#FCF4F3;margin:24px 0;color:#111}
+  #raus{display:none}
+</style>
+</head>
+<body>
+<h1>Schlüssel für Erinnerungen</h1>
+<p>Erzeugt ein Schlüsselpaar für die Benachrichtigungen. Alles passiert hier auf deinem Gerät –
+nichts wird irgendwohin gesendet.</p>
+
+<button id="los">Schlüsselpaar erzeugen</button>
+
+<div id="raus">
+  <label>Öffentlicher Schlüssel — in der App unter Zugangsdaten eintragen</label>
+  <textarea id="pub" rows="2" readonly></textarea>
+  <button class="leise" data-kopie="pub">Kopieren</button>
+
+  <label>Privater Schlüssel — als Supabase-Geheimnis <code>VAPID_PRIVATE</code></label>
+  <textarea id="priv" rows="2" readonly></textarea>
+  <button class="leise" data-kopie="priv">Kopieren</button>
+
+  <div class="warn">
+    Der private Schlüssel gehört ausschließlich nach Supabase. Nicht in die App eintragen,
+    nicht ins GitHub-Repository legen und nicht per Nachricht verschicken.
+    Er lässt sich jederzeit neu erzeugen – dann müssen sich alle Geräte erneut anmelden.
+  </div>
+</div>
+
+<script>
+function b64(buf){
+  const a=new Uint8Array(buf); let s='';
+  a.forEach(x=>s+=String.fromCharCode(x));
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+document.getElementById('los').onclick=async()=>{
+  const paar=await crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign','verify']);
+  const roh=await crypto.subtle.exportKey('raw',paar.publicKey);   // 65 Byte, unkomprimiert
+  const jwk=await crypto.subtle.exportKey('jwk',paar.privateKey);
+  document.getElementById('pub').value=b64(roh);
+  document.getElementById('priv').value=jwk.d;
+  document.getElementById('raus').style.display='block';
+};
+document.querySelectorAll('[data-kopie]').forEach(b=>b.onclick=async()=>{
+  const f=document.getElementById(b.dataset.kopie);
+  try{ await navigator.clipboard.writeText(f.value); b.textContent='Kopiert'; setTimeout(()=>b.textContent='Kopieren',1600); }
+  catch(e){ f.select(); }
+});
+</script>
+</body>
+</html>

@@ -319,7 +319,7 @@ const DOC_KEY='todo.doc.v1', CFG_KEY='todo.cfg.v1';
 const FARBEN=['#B03A2E','#CA6F1E','#B7950B','#1E8449','#0E8074','#1F6FB2','#34495E','#6C3483','#A5468B','#5D6D7E'];
 
 let doc={bereiche:[],aufgaben:[],vorlagen:[],notiz:{text:'',ts:0},dateien:[]};
-let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell'};
+let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell',vapid:'',push:false};
 let ansicht='heute', offenerBereich=null, notizUhr=null;
 
 try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[],notiz:(d.notiz&&typeof d.notiz==='object')?d.notiz:{text:'',ts:0},dateien:d.dateien||[]}; }catch(e){}
@@ -363,10 +363,29 @@ const ZAHLWORT={ein:1,einer:1,einem:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:
 function zahl(s){ if(!s) return null; s=s.toLowerCase(); return /^\d+$/.test(s)?parseInt(s,10):(ZAHLWORT[s]??null); }
 
 function erkenneDatum(roh){
-  let text=' '+roh+' ', faellig=null;
+  let text=' '+roh+' ', faellig=null, zeit=null;
   const weg=re=>{ const m=text.match(re); if(m){ text=text.replace(m[0],' '); return m; } return null; };
   const zahlM='(\\d{1,2}|ein|einer|einem|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwoelf|vierzehn)';
   let m;
+
+  /* Uhrzeit zuerst, damit "um 8" nicht mit "am 8." verwechselt wird */
+  const STUNDE={ein:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,zwoelf:12};
+  const stundeM='(\\d{1,2}|ein|eins|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwoelf)';
+  const spaet=/abends|nachmittags|nachmittag|abend/i.test(text);
+  let h=null,min=0;
+  if((m=weg(/\sum\s+(\d{1,2})[:.](\d{2})\s*(uhr)?\s/i))){ h=+m[1]; min=+m[2]; }
+  else if((m=weg(new RegExp('\\s(um\\s+)?halb\\s+'+stundeM+'\\s','i')))){
+    const z=/^\d+$/.test(m[2])?+m[2]:STUNDE[m[2].toLowerCase()];
+    if(z){ h=(z===1?12:z-1); min=30; }
+  }
+  else if((m=weg(new RegExp('\\sum\\s+'+stundeM+'\\s+uhr\\s+drei(ss|ß)ig\\s','i')))){ h=/^\d+$/.test(m[1])?+m[1]:STUNDE[m[1].toLowerCase()]; min=30; }
+  else if((m=weg(new RegExp('\\sum\\s+'+stundeM+'\\s*uhr\\s','i')))){ h=/^\d+$/.test(m[1])?+m[1]:STUNDE[m[1].toLowerCase()]; }
+  else if((m=weg(/\sum\s+(\d{1,2})\s/i))){ h=+m[1]; }
+  if(h!==null&&h>=0&&h<=23){
+    if(spaet&&h<12) h+=12;
+    weg(/\s(abends|nachmittags|nachmittag|abend|morgens|vormittags|früh)\s/i);
+    zeit=String(h).padStart(2,'0')+':'+String(min).padStart(2,'0');
+  }
 
   if((m=weg(/\s(am\s+)?(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})?\s/i))){
     const t=+m[2], mo=+m[3]; let j=m[4]?(m[4].length===2?2000+ +m[4]:+m[4]):new Date().getFullYear();
@@ -393,18 +412,19 @@ function erkenneDatum(roh){
     faellig=plusTage(isoHeute(),diff);
   }
 
-  text=text.replace(/\s+/g,' ').trim().replace(/^(und|dann|bis|am|noch)\s+/i,'').replace(/[,;]+$/,'').trim();
-  return {text,faellig};
+  text=text.replace(/\s+/g,' ').trim().replace(/^(und|dann|bis|am|noch|um)\s+/i,'').replace(/[,;]+$/,'').trim();
+  if(zeit&&!faellig) faellig=isoHeute();
+  return {text,faellig,zeit};
 }
 
 /* ============ Anlegen / Ändern ============ */
 function aufgabeAnlegen(roh,bereichId){
   let t=String(roh||'').replace(/\s+/g,' ').trim().replace(/[.]+$/,'');
   if(t.length<2) return null;
-  const {text,faellig}=erkenneDatum(t);
+  const {text,faellig,zeit}=erkenneDatum(t);
   if(text.length<2) return null;
   const minPos=Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0));
-  const a={ id:uid(), text:text.charAt(0).toUpperCase()+text.slice(1), notiz:'', faellig,
+  const a={ id:uid(), text:text.charAt(0).toUpperCase()+text.slice(1), notiz:'', faellig, zeit:zeit||null,
             erledigt:false, erledigtAm:null, bereichId:bereichId??cfg.ziel??null,
             vorlageId:null, pos:minPos-10, ts:jetzt(), geloescht:false };
   doc.aufgaben.unshift(a);
@@ -649,7 +669,8 @@ function aufgabenHtml(liste,zeigeBereich){
     const f=farbeVon(a.bereichId), b=bereichVon(a.bereichId), t=tageBis(a.faellig);
     const kl=t===null?'':(t<0?'faellig warn':(t===0?'faellig heute':'faellig'));
     const teile=[];
-    if(a.faellig) teile.push(`<span class="${kl}">${esc(fmtFaellig(a.faellig))}</span>`);
+    if(a.faellig) teile.push(`<span class="${kl}">${esc(fmtFaellig(a.faellig))}${a.zeit?' '+esc(a.zeit):''}</span>`);
+    if(a.zeit&&!a.erledigt) teile.push('<span title="Erinnerung">&#9200;</span>');
     if(zeigeBereich&&b) teile.push(`<span class="bereichs-tag"><span class="punkt" style="background:${esc(b.farbe)}"></span>${esc(b.name)}</span>`);
     if(a.vorlageId) teile.push('<span>Serie</span>');
     if(a.notiz&&a.notiz.trim()) teile.push('<span class="notizzeichen">Notiz</span>');
@@ -955,6 +976,11 @@ function blattAufgabe(a){
       <button data-t="0">Heute</button><button data-t="1">Morgen</button>
       <button data-t="7">In einer Woche</button><button data-t="">Kein Datum</button>
     </div>
+    <label>Erinnerung um</label><input type="time" id="f-zeit" value="${a.zeit||''}">
+    <div class="schnell">
+      <button data-z="07:00">07:00</button><button data-z="12:00">12:00</button>
+      <button data-z="17:00">17:00</button><button data-z="">Keine</button>
+    </div>
     <label>Bereich</label><select id="f-bereich">${bereichOptionen(a.bereichId)}</select>
     <label>Notiz</label><textarea id="f-notiz" placeholder="Telefonnummer, Adresse, Details …">${esc(a.notiz)}</textarea>
     ${a.vorlageId?`<p class="hinweis">Diese Aufgabe stammt aus einer Serie. Beim Abhaken wird automatisch der nächste Termin gesetzt.</p>`:''}
@@ -964,13 +990,18 @@ function blattAufgabe(a){
       <button class="knopf" id="f-ab">Abbrechen</button>
       <button class="knopf leise" id="f-weg">Löschen</button>
     </div>`);
-  $('blatt').querySelectorAll('.schnell button').forEach(b=>b.onclick=()=>{
+  $('blatt').querySelectorAll('.schnell button[data-t]').forEach(b=>b.onclick=()=>{
     $('f-datum').value=b.dataset.t===''?'':plusTage(isoHeute(),+b.dataset.t);
+  });
+  $('blatt').querySelectorAll('.schnell button[data-z]').forEach(b=>b.onclick=()=>{
+    $('f-zeit').value=b.dataset.z;
+    if(b.dataset.z&&!$('f-datum').value) $('f-datum').value=isoHeute();
   });
   $('f-oben').onclick=()=>{ blattZu(); nachOben(a); };
   $('f-ok').onclick=()=>{
     const t=$('f-text').value.trim(); if(t.length<1) return;
-    a.text=t; a.faellig=$('f-datum').value||null;
+    a.text=t; a.faellig=$('f-datum').value||null; a.zeit=$('f-zeit').value||null;
+    if(a.zeit&&!a.faellig) a.faellig=isoHeute();
     a.bereichId=$('f-bereich').value||null; a.notiz=$('f-notiz').value;
     a.ts=jetzt(); blattZu(); geaendert();
   };
@@ -1178,11 +1209,77 @@ async function sync(still){
     serienPruefen(); sichern(); zeichnen();
     const fernJson=JSON.stringify({bereiche:fern.bereiche||[],aufgaben:fern.aufgaben||[],vorlagen:fern.vorlagen||[],notiz:fern.notiz||{text:'',ts:0},dateien:fern.dateien||[]});
     if(JSON.stringify(doc)!==fernJson) await rpc('sync_push',{p_code:cfg.code,p_doc:doc});
+    swKonfigSenden();
     if(!still) melde('Abgeglichen um '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),2500);
     dateienAufraeumen();
   }catch(e){
     melde('Abgleich fehlgeschlagen. Einstellungen prüfen.',4000);
   }finally{ syncLaeuft=false; }
+}
+
+/* ============ Erinnerungen (Web Push) ============ */
+let swReg=null;
+
+function pushMoeglich(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function b64zuBytes(b64){
+  const s=(b64+'==='.slice((b64.length+3)%4)).replace(/-/g,'+').replace(/_/g,'/');
+  const roh=atob(s), a=new Uint8Array(roh.length);
+  for(let i=0;i<roh.length;i++) a[i]=roh.charCodeAt(i);
+  return a;
+}
+function bytesZuB64(buf){
+  const a=new Uint8Array(buf); let s='';
+  a.forEach(x=>s+=String.fromCharCode(x));
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+async function swStarten(){
+  if(!pushMoeglich()) return null;
+  try{
+    swReg=await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.ready;
+    swKonfigSenden();
+    return swReg;
+  }catch(e){ return null; }
+}
+function swKonfigSenden(){
+  if(!navigator.serviceWorker||!navigator.serviceWorker.controller) return;
+  navigator.serviceWorker.controller.postMessage({typ:'cfg',cfg:{url:cfg.url,key:cfg.key,code:cfg.code}});
+}
+
+async function pushAnmelden(){
+  if(!pushMoeglich()) return melde('Dieser Browser kann keine Erinnerungen anzeigen.',5000);
+  if(!speicherBereit()) return melde('Erst den Abgleich einrichten.',4000);
+  if(!cfg.vapid) return melde('Es fehlt der öffentliche Schlüssel unter Zugangsdaten.',6000);
+  const erlaubnis=await Notification.requestPermission();
+  if(erlaubnis!=='granted') return melde('Benachrichtigungen wurden abgelehnt. In den Browser-Einstellungen für diese Seite erlauben.',7000);
+  const reg=swReg||await swStarten();
+  if(!reg) return melde('Der Hintergrunddienst ließ sich nicht starten.',5000);
+  try{
+    let ab=await reg.pushManager.getSubscription();
+    if(ab){
+      const alt=bytesZuB64(ab.options.applicationServerKey||new ArrayBuffer(0));
+      if(alt!==cfg.vapid){ await ab.unsubscribe(); ab=null; }
+    }
+    if(!ab) ab=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64zuBytes(cfg.vapid)});
+    const j=ab.toJSON();
+    await rpc('push_anmelden',{p_code:cfg.code,p_endpoint:j.endpoint,
+      p_p256dh:j.keys?j.keys.p256dh:'',p_auth:j.keys?j.keys.auth:'',
+      p_geraet:(navigator.userAgent.match(/Android|iPhone|iPad|Macintosh|Windows/)||['Gerät'])[0]});
+    cfg.push=true; sichern(); swKonfigSenden();
+    melde('Erinnerungen sind auf diesem Gerät aktiv.',4000);
+    blattZu();
+  }catch(e){ melde('Anmeldung fehlgeschlagen: '+(e&&e.message?e.message:'unbekannt'),6000); }
+}
+
+async function pushAbmelden(){
+  try{
+    const reg=swReg||await navigator.serviceWorker.getRegistration();
+    const ab=reg&&await reg.pushManager.getSubscription();
+    if(ab){ await rpc('push_abmelden',{p_code:cfg.code,p_endpoint:ab.endpoint}).catch(()=>{}); await ab.unsubscribe(); }
+  }catch(e){}
+  cfg.push=false; sichern(); blattZu();
+  melde('Erinnerungen auf diesem Gerät abgeschaltet.',3500);
 }
 
 /* ============ Einstellungen ============ */
@@ -1196,6 +1293,9 @@ $('btn-einst').onclick=()=>{
     </div>
     <label>Sicherungskopie</label>
     <div class="schnell"><button id="e-exp">Als Datei sichern</button><button id="e-imp">Datei laden</button></div>
+    <label>Erinnerungen auf diesem Gerät</label>
+    <p class="hinweis" style="margin:0 0 10px" id="e-pushstand">…</p>
+    <div class="knopfreihe" style="margin-top:0" id="e-pushreihe"></div>
     <label>Abgleich</label>
     <p class="hinweis" style="margin:0 0 10px">${verbunden?'Eingerichtet und aktiv.':'Noch nicht eingerichtet.'}</p>
     <div class="knopfreihe" style="margin-top:0">
@@ -1214,6 +1314,27 @@ $('btn-einst').onclick=()=>{
     a.download='todo-'+isoHeute()+'.json'; a.click(); URL.revokeObjectURL(a.href);
   };
   $('e-imp').onclick=()=>$('datei').click();
+
+  (async()=>{
+    const stand=$('e-pushstand'), reihe=$('e-pushreihe');
+    if(!stand) return;
+    if(!pushMoeglich()){ stand.textContent='Dieser Browser unterstützt keine Erinnerungen. Am Rechner Chrome oder Edge verwenden.'; return; }
+    if(!verbunden){ stand.textContent='Erst den Abgleich einrichten.'; return; }
+    if(!cfg.vapid){ stand.textContent='Es fehlt der öffentliche Schlüssel – unter Zugangsdaten eintragen.'; return; }
+    if(Notification.permission==='denied'){
+      stand.textContent='Benachrichtigungen sind für diese Seite blockiert. Bitte in den Browser-Einstellungen erlauben.'; return; }
+    const reg=await navigator.serviceWorker.getRegistration();
+    const ab=reg&&await reg.pushManager.getSubscription();
+    if(ab&&Notification.permission==='granted'){
+      stand.textContent='Aktiv. Aufgaben mit Uhrzeit melden sich von selbst.';
+      reihe.innerHTML='<button class="knopf leise" id="e-pushaus">Abschalten</button>';
+      $('e-pushaus').onclick=pushAbmelden;
+    }else{
+      stand.textContent='Noch nicht aktiv. Erinnerungen kommen nur für Aufgaben mit Uhrzeit.';
+      reihe.innerHTML='<button class="knopf" id="e-pushan">Auf diesem Gerät aktivieren</button>';
+      $('e-pushan').onclick=pushAnmelden;
+    }
+  })();
   if(verbunden) $('e-jetzt').onclick=()=>{ blattZu(); sync(); };
   $('e-zeig').onclick=blattZugang;
   $('e-ab').onclick=blattZu;
@@ -1233,6 +1354,8 @@ function blattZugang(){
       <label>Sync-Code (auf allen Geräten identisch)</label>
       <input type="text" id="e-code" value="${esc(cfg.code)}" placeholder="mindestens 12 Zeichen" autocapitalize="off" spellcheck="false" disabled>
       <div class="schnell"><button id="e-gen">Code erzeugen</button><button id="e-kopie">Code kopieren</button></div>
+      <label>Öffentlicher Schlüssel für Erinnerungen</label>
+      <input type="text" id="e-vapid" value="${esc(cfg.vapid||'')}" placeholder="B… (aus vapid.html)" autocapitalize="off" spellcheck="false" disabled>
       <div class="knopfreihe">
         <button class="knopf voll" id="e-ok">Speichern &amp; abgleichen</button>
         <button class="knopf" id="e-verwerf">Verwerfen</button>
@@ -1244,7 +1367,7 @@ function blattZugang(){
   $('z-zurueck').onclick=()=>$('btn-einst').click();
   $('z-frei').onclick=()=>{
     $('z-feld').hidden=false;
-    ['e-url','e-key','e-code'].forEach(i=>$(i).disabled=false);
+    ['e-url','e-key','e-code','e-vapid'].forEach(i=>$(i).disabled=false);
     $('z-frei').remove();
   };
   $('e-gen').onclick=()=>{
@@ -1261,7 +1384,7 @@ function blattZugang(){
   $('e-ok').onclick=()=>{
     const u=$('e-url').value.trim(), k=$('e-key').value.trim(), co=$('e-code').value.trim();
     if(co&&co.length<12) return melde('Der Sync-Code muss mindestens 12 Zeichen haben.',4000);
-    cfg.url=u; cfg.key=k; cfg.code=co;
+    cfg.url=u; cfg.key=k; cfg.code=co; cfg.vapid=$('e-vapid').value.trim();
     sichern(); blattZu();
     if(cfg.url&&cfg.key&&cfg.code) sync(); else melde('Gespeichert. Abgleich ist noch nicht eingerichtet.',3000);
   };
@@ -1294,6 +1417,7 @@ $('datei').onchange=e=>{
   $('logo').onclick=()=>{ offenerBereich=null; setzeAnsicht('heute'); };
   zeichnen();
   sync(true);
+  swStarten();
 })();
 
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ zeichnen(); sync(true); } });

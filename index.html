@@ -13,6 +13,7 @@
 <link rel="icon" href="./icon-192.png">
 <style>
   :root{
+    --schrift:"Times New Roman",Times,"Liberation Serif",serif;
     --tinte:#111111;
     --papier:#FFFFFF;
     --grau:#767676;
@@ -23,6 +24,15 @@
     --schleier:rgba(0,0,0,.35);
     --schatten:rgba(0,0,0,.12);
   }
+  html[data-schrift="sans"]{
+    --schrift:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  html[data-schrift="georgia"]{
+    --schrift:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,serif;
+  }
+  /* Das Logo bleibt immer in der Schrift der Wortmarke */
+  .logo,.s-logo{font-family:"Times New Roman",Times,"Liberation Serif",serif}
+
   html[data-thema="dunkel"]{
     --tinte:#E9E9E5;
     --papier:#131313;
@@ -42,7 +52,7 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;background:var(--papier)}
   body{
-    font-family:"Times New Roman",Times,Liberation Serif,serif;
+    font-family:var(--schrift);
     color:var(--tinte);font-size:18px;line-height:1.4;
     min-height:100vh;
     padding:18px 18px calc(150px + env(safe-area-inset-bottom));
@@ -320,7 +330,7 @@ const DOC_KEY='todo.doc.v1', CFG_KEY='todo.cfg.v1';
 const FARBEN=['#B03A2E','#CA6F1E','#B7950B','#1E8449','#0E8074','#1F6FB2','#34495E','#6C3483','#A5468B','#5D6D7E'];
 
 let doc={bereiche:[],aufgaben:[],vorlagen:[],notiz:{text:'',ts:0},dateien:[]};
-let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell',vapid:'',push:false};
+let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell',schrift:'times',vapid:'',push:false};
 let ansicht='heute', offenerBereich=null, notizUhr=null;
 
 try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[],notiz:(d.notiz&&typeof d.notiz==='object')?d.notiz:{text:'',ts:0},dateien:d.dateien||[]}; }catch(e){}
@@ -332,6 +342,12 @@ const jetzt=()=>Date.now();
 const aktiv=liste=>liste.filter(x=>!x.geloescht);
 const sichern=()=>{ LS.setItem(DOC_KEY,JSON.stringify(doc)); LS.setItem(CFG_KEY,JSON.stringify(cfg)); };
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function setzeSchrift(s){
+  cfg.schrift=['sans','georgia'].includes(s)?s:'times';
+  document.documentElement.setAttribute('data-schrift',cfg.schrift);
+  sichern();
+}
 
 function setzeThema(t){
   cfg.thema=(t==='dunkel')?'dunkel':'hell';
@@ -1322,6 +1338,12 @@ $('btn-einst').onclick=()=>{
       <button data-t="hell" aria-pressed="${cfg.thema!=='dunkel'}">Hell</button>
       <button data-t="dunkel" aria-pressed="${cfg.thema==='dunkel'}">Dunkel</button>
     </div>
+    <label>Schrift</label>
+    <div class="wahl">
+      <button data-s="times"   aria-pressed="${cfg.schrift==='times'}"   style="font-family:'Times New Roman',Times,serif">Times</button>
+      <button data-s="georgia" aria-pressed="${cfg.schrift==='georgia'}" style="font-family:Georgia,serif">Georgia</button>
+      <button data-s="sans"    aria-pressed="${cfg.schrift==='sans'}"    style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">Serifenlos</button>
+    </div>
     <label>Sicherungskopie</label>
     <div class="schnell"><button id="e-exp">Als Datei sichern</button><button id="e-imp">Datei laden</button></div>
     <label>Erinnerungen auf diesem Gerät</label>
@@ -1335,9 +1357,13 @@ $('btn-einst').onclick=()=>{
     </div>
     <div class="knopfreihe"><button class="knopf voll" id="e-ab">Schließen</button></div>`);
 
-  $('blatt').querySelectorAll('.wahl button').forEach(b=>b.onclick=()=>{
+  $('blatt').querySelectorAll('.wahl button[data-t]').forEach(b=>b.onclick=()=>{
     setzeThema(b.dataset.t);
-    $('blatt').querySelectorAll('.wahl button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.t===cfg.thema)));
+    $('blatt').querySelectorAll('.wahl button[data-t]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.t===cfg.thema)));
+  });
+  $('blatt').querySelectorAll('.wahl button[data-s]').forEach(b=>b.onclick=()=>{
+    setzeSchrift(b.dataset.s);
+    $('blatt').querySelectorAll('.wahl button[data-s]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.s===cfg.schrift)));
   });
   $('e-exp').onclick=()=>{
     const b=new Blob([JSON.stringify(doc,null,2)],{type:'application/json'});
@@ -1439,6 +1465,7 @@ $('datei').onchange=e=>{
 /* ============ Teilen-Ziel / Start ============ */
 (function start(){
   setzeThema(cfg.thema);
+  setzeSchrift(cfg.schrift);
   doc.aufgaben.forEach((a,i)=>{ if(typeof a.pos!=='number') a.pos=i*10; });
   const p=new URLSearchParams(location.search);
   const geteilt=[p.get('title'),p.get('text'),p.get('url')].filter(Boolean).join(' ').trim();

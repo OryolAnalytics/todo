@@ -1240,6 +1240,17 @@ function zeichnen(){
 
   $('leiste').style.display=(ansicht==='heute'||ansicht==='alle'||ansicht==='bereich')?'flex':'none';
   zeichneZiel();
+  zeichneAufnahme();
+}
+
+function zeichneAufnahme(){
+  const k=$('tonauf'), m=$('mitschrift');
+  if(!k) return;
+  k.classList.toggle('nimmt',!!aufnahme);
+  k.setAttribute('aria-label',aufnahme?'Aufnahme beenden':'Sprachnotiz aufnehmen');
+  if(aufnahme){
+    m.innerHTML='<span class="aufnahmebalken"><span class="pkt"></span>Aufnahme läuft · <span id="aufnahmezeit">0:00</span> · zum Beenden nochmal tippen</span>';
+  }else if(m.querySelector('.aufnahmebalken')){ m.textContent=''; }
 }
 
 function zeichneZiel(){
@@ -1249,6 +1260,8 @@ function zeichneZiel(){
     Neue Aufgabe in: ${esc(b?b.name:'Ohne Bereich')}${ansicht==='bereich'?'':(mehrere?' <em>tippen zum Wechseln</em>':'')}`;
   $('ziel').style.display=ansicht==='bereich'?'none':'flex';
 }
+$('tonauf').onclick=()=>{ aufnahme?aufnahmeBeenden():aufnahmeStarten(); };
+
 $('ziel').onclick=()=>{
   const bs=aktiv(doc.bereiche);
   if(!bs.length) return blattBereich(null);

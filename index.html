@@ -283,7 +283,8 @@
   .zahlen .z b{font-size:24px;color:var(--tinte);margin-right:5px;font-weight:normal}
   .zahlen .z.warn b{color:var(--warn)}
   .zahlen .z.gut b{color:#1E8449}
-  .raster{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));align-items:start}
+  .raster{display:flex;gap:18px;align-items:flex-start}
+  .spalte{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:18px}
   .kachel{border:1px solid var(--linie);border-radius:8px;padding:15px 17px 13px;background:var(--papier)}
   .kachel.dringend{border-color:var(--warn)}
   .kachel h3{margin:0 0 9px;font-size:14px;font-weight:normal;font-variant:small-caps;
@@ -817,6 +818,36 @@ function zeichneNav(){
 }
 function amRechner(){ return window.matchMedia('(min-width:900px)').matches; }
 
+/* Die Kacheln werden auf Spalten verteilt und rücken dabei nach oben nach.
+   Ein starres Raster würde neben einer hohen Kachel Leerraum stehen lassen. */
+const KACHEL_MIN=310, KACHEL_LUECKE=18;
+function kachelnStapeln(){
+  const raster=document.querySelector('.raster');
+  if(!raster) return;
+  const kacheln=[...raster.querySelectorAll('.kachel')];
+  if(!kacheln.length) return;
+  const breite=raster.clientWidth;
+  const anzahl=Math.max(1,Math.min(kacheln.length,
+    Math.floor((breite+KACHEL_LUECKE)/(KACHEL_MIN+KACHEL_LUECKE))));
+  raster.innerHTML='';
+  const spalten=[];
+  for(let i=0;i<anzahl;i++){
+    const d=document.createElement('div'); d.className='spalte';
+    raster.appendChild(d); spalten.push(d);
+  }
+  // jede Kachel kommt in die bislang kürzeste Spalte
+  kacheln.forEach(k=>{
+    let ziel=spalten[0];
+    spalten.forEach(s=>{ if(s.offsetHeight<ziel.offsetHeight) ziel=s; });
+    ziel.appendChild(k);
+  });
+}
+let stapelUhr=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(stapelUhr);
+  stapelUhr=setTimeout(()=>{ if(ansicht==='start') zeichnen(); },150);
+});
+
 function setzeAnsicht(v){ ansicht=v; cfg.ansicht=(v==='bereich'?'bereiche':v); sichern(); zeichnen(); }
 
 function zeichneSeite(){
@@ -1192,6 +1223,7 @@ function zeichnen(){
     c.querySelectorAll('[data-oeffne]').forEach(li=>li.onclick=()=>{
       const a=doc.aufgaben.find(x=>x.id===li.dataset.oeffne); if(a) blattAufgabe(a); });
     if($('k-notiz')) $('k-notiz').onclick=()=>setzeAnsicht('notizen');
+    kachelnStapeln();
   }
 
   else if(ansicht==='suche'){

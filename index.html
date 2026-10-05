@@ -107,6 +107,15 @@
   .faellig.warn{color:var(--warn)}
   .faellig.heute{color:var(--tinte)}
   .notizzeichen{font-style:italic}
+  .stern{
+    flex:0 0 auto;background:none;border:0;padding:4px 2px;cursor:pointer;align-self:center;
+    color:var(--linie);line-height:0;
+  }
+  .stern svg{width:17px;height:17px;fill:currentColor}
+  .stern.an{color:#D9A400}
+  .stern:hover{color:var(--grau)}
+  .stern.an:hover{color:#B98B00}
+  li.auf.istwichtig .titel{font-weight:bold}
   .griff{
     flex:0 0 auto;background:none;border:0;padding:6px 2px 6px 8px;cursor:grab;
     touch-action:none;opacity:.45;align-self:center;
@@ -128,6 +137,9 @@
   li.serie .kopfz .nam{flex:1}
 
   .leer{padding:36px 2px;color:var(--grau)}
+  #suchfeld{margin-bottom:6px}
+  .trefferzeile{padding:13px 2px;border-bottom:1px solid var(--linie);color:var(--grau);cursor:pointer}
+  .trefferzeile:hover{color:var(--tinte)}
   #notizfeld{
     width:100%;min-height:calc(100vh - 300px);font-size:17px;line-height:1.5;
     background:var(--papier);border:1px solid var(--linie);border-radius:5px;padding:14px;
@@ -231,10 +243,65 @@
   .zwei{display:flex;gap:10px}
   .zwei>*{flex:1}
   .hinweis{font-size:14px;color:var(--grau);margin:10px 0 0;line-height:1.35}
+  .ton{
+    flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:1px solid var(--linie);
+    background:none;cursor:pointer;display:grid;place-items:center;margin-top:1px;color:var(--tinte);
+  }
+  .ton svg{width:13px;height:13px;fill:currentColor}
+  .ton.laeuft{background:var(--tinte);color:var(--papier);border-color:var(--tinte)}
+  .ton-knopf{width:44px;height:44px;background:none;border:1.5px solid var(--linie);color:var(--warn)}
+  .ton-knopf svg{width:16px;height:16px}
+  .ton-knopf.nimmt{background:var(--warn);border-color:var(--warn);color:#fff}
+  .aufnahmebalken{
+    display:flex;align-items:center;gap:10px;font-size:15px;color:var(--warn);padding:0 0 8px;
+  }
+  .aufnahmebalken .pkt{width:9px;height:9px;border-radius:50%;background:var(--warn);animation:blink 1s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .band{
+    position:fixed;left:0;right:0;top:0;z-index:25;display:none;
+    padding:calc(8px + env(safe-area-inset-top)) 16px 8px;text-align:center;
+    font-size:14px;background:var(--feld);color:var(--grau);border-bottom:1px solid var(--linie);
+  }
+  .band.auf{display:block}
+  .band.neu{background:var(--tinte);color:var(--papier);border-bottom-color:var(--tinte)}
+  .band button{
+    margin-left:10px;background:none;border:1px solid var(--papier);color:var(--papier);
+    border-radius:4px;padding:3px 11px;font-size:14px;cursor:pointer;
+  }
   .status{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));
           text-align:center;font-size:14px;color:var(--grau);pointer-events:none;z-index:30;
           padding:0 18px}
   :focus-visible{outline:2px solid var(--tinte);outline-offset:2px}
+
+  /* ===== Dashboard ===== */
+  .brett-kopf{display:flex;align-items:baseline;justify-content:space-between;gap:20px;
+              flex-wrap:wrap;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--linie)}
+  .brett-kopf .gross{font-size:30px;margin-right:10px}
+  .brett-kopf .klein{color:var(--grau);font-size:17px}
+  .zahlen{display:flex;gap:22px;flex-wrap:wrap}
+  .zahlen .z{color:var(--grau);font-size:15px}
+  .zahlen .z b{font-size:24px;color:var(--tinte);margin-right:5px;font-weight:normal}
+  .zahlen .z.warn b{color:var(--warn)}
+  .zahlen .z.gut b{color:#1E8449}
+  .raster{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));align-items:start}
+  .kachel{border:1px solid var(--linie);border-radius:8px;padding:15px 17px 13px;background:var(--papier)}
+  .kachel.dringend{border-color:var(--warn)}
+  .kachel h3{margin:0 0 9px;font-size:14px;font-weight:normal;font-variant:small-caps;
+             letter-spacing:.08em;color:var(--grau)}
+  .kachel.dringend h3{color:var(--warn)}
+  .kachel .nix{margin:0;color:var(--grau);font-size:15px}
+  .kachel .zeile{margin:0;font-size:16px;line-height:1.4;white-space:pre-wrap;cursor:pointer}
+  ul.knapp{list-style:none;margin:0;padding:0}
+  ul.knapp li{display:flex;align-items:center;gap:9px;padding:6px 0;cursor:pointer;
+              border-bottom:1px solid var(--linie)}
+  ul.knapp li:last-child{border-bottom:0;padding-bottom:0}
+  ul.knapp .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}
+  ul.knapp .n{flex:0 0 auto;color:var(--grau);font-size:13.5px}
+  ul.knapp .kasten{width:17px;height:17px;margin-top:0}
+  ul.knapp .ton{width:24px;height:24px;margin-top:0}
+  ul.knapp .ton svg{width:11px;height:11px}
+  .ministern{color:#D9A400;margin-right:5px}
+  .rahmen.weit{max-width:none}
 
   /* ===== Desktop: Seitenleiste statt Reiter ===== */
   @media(min-width:900px){
@@ -270,6 +337,7 @@
     .leiste{position:static;padding:14px 34px 20px;flex:0 0 auto}
     .leiste-inner{max-width:none}
     .status{bottom:auto;top:16px;right:24px;left:auto;text-align:right}
+    .rahmen.weit .wrap{padding:30px 34px 40px}
     #notizfeld{min-height:calc(100vh - 190px)}
     h2:first-child{margin-top:0}
   }
@@ -298,6 +366,10 @@
     <button class="ziel" id="ziel"></button>
     <div class="reihe">
       <input type="text" id="eingabe" placeholder="Aufgabe eintippen und Enter" autocomplete="off">
+      <button class="mik ton-knopf" id="tonauf" aria-label="Sprachnotiz aufnehmen" title="Sprachnotiz aufnehmen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/></svg>
+      </button>
       <button class="mik" id="mik" aria-label="Diktieren">
         <span class="welle"></span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -311,11 +383,14 @@
 </div>
 </div>
 
+<div class="band" id="offlineband">Kein Netz – Änderungen werden später abgeglichen</div>
+<div class="band neu" id="neuband"></div>
 <div class="status" id="status"></div>
 <div class="schleier" id="schleier"></div>
 <div class="blatt" id="blatt"></div>
 <input type="file" id="datei" accept="application/json" hidden>
 <input type="file" id="dateiwahl" multiple hidden>
+<input type="file" id="fotowahl" accept="image/*" capture="environment" hidden>
 
 <script>
 "use strict";
@@ -442,6 +517,7 @@ function aufgabeAnlegen(roh,bereichId){
   if(text.length<2) return null;
   const minPos=Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0));
   const a={ id:uid(), text:text.charAt(0).toUpperCase()+text.slice(1), notiz:'', faellig, zeit:zeit||null,
+            wichtig:false, ton:null,
             erledigt:false, erledigtAm:null, bereichId:bereichId??cfg.ziel??null,
             vorlageId:null, pos:minPos-10, ts:jetzt(), geloescht:false };
   doc.aufgaben.unshift(a);
@@ -456,11 +532,13 @@ function abhaken(a){
   a.erledigt=!a.erledigt;
   a.erledigtAm=a.erledigt?jetzt():null;
   a.ts=jetzt();
+  if(a.erledigt&&a.ton){ const d=tonDatei(a); if(d) dateiEntfernen(d,true); }
   if(a.erledigt&&a.vorlageId) serieWeiter(a.vorlageId);
   geaendert();
 }
 function loeschen(a){
   a.geloescht=true; a.ts=jetzt();
+  if(a.ton){ const d=tonDatei(a); if(d) dateiEntfernen(d,true); }
   if(a.vorlageId&&!a.erledigt) serieWeiter(a.vorlageId);
   geaendert();
 }
@@ -557,13 +635,14 @@ function restText(hoch){
   return std>0?`noch ${std} Std.`:`noch ${min} Min.`;
 }
 
-function hochladen(datei){
-  if(!speicherBereit()) return melde('Erst den Abgleich einrichten (Zahnrad).',4000);
-  if(datei.size>50*1024*1024) return melde(`${datei.name} ist größer als 50 MB.`,5000);
+function hochladen(datei,dauerhaft,fertig){
+  if(!speicherBereit()){ melde('Erst den Abgleich einrichten (Zahnrad).',4000); return; }
+  if(datei.size>50*1024*1024){ melde(`${datei.name} ist größer als 50 MB.`,5000); return; }
   const endung=(datei.name.match(/\.[a-z0-9]{1,8}$/i)||[''])[0].toLowerCase();
   const pfad=uid()+Math.random().toString(36).slice(2,10)+endung;
   const eintrag={ id:uid(), name:datei.name, groesse:datei.size, typ:datei.type||'',
-                  pfad, hoch:jetzt(), ts:jetzt(), geloescht:false };
+                  pfad, hoch:jetzt(), ts:jetzt(), geloescht:false,
+                  dauerhaft:!!dauerhaft };
   ladeStand[pfad]=0;
   if(ansicht==='dateien') zeichnen();
 
@@ -582,14 +661,16 @@ function hochladen(datei){
   xhr.onload=()=>{
     delete ladeStand[pfad];
     if(xhr.status>=200&&xhr.status<300){
-      doc.dateien.unshift(eintrag); geaendert();
-      melde(datei.name+' übertragen.',2500);
+      doc.dateien.unshift(eintrag);
+      if(fertig) fertig(eintrag); else { geaendert(); melde(datei.name+' übertragen.',2500); }
     }else{
       if(ansicht==='dateien') zeichnen();
       melde('Hochladen fehlgeschlagen. Ist der Speicher eingerichtet?',5000);
+      if(fertig) fertig(null);
     }
   };
-  xhr.onerror=()=>{ delete ladeStand[pfad]; if(ansicht==='dateien') zeichnen(); melde('Keine Verbindung zum Speicher.',4000); };
+  xhr.onerror=()=>{ delete ladeStand[pfad]; if(ansicht==='dateien') zeichnen();
+    melde('Keine Verbindung zum Speicher.',4000); if(fertig) fertig(null); };
   xhr.send(datei);
 }
 
@@ -606,6 +687,27 @@ async function herunterladen(d){
   }catch(e){ melde('Datei nicht mehr verfügbar.',4000); }
 }
 
+async function alleHerunterladen(){
+  const ds=aktiv(doc.dateien).filter(d=>!d.dauerhaft);
+  if(!ds.length) return;
+  melde('Lade '+ds.length+' Dateien …',4000);
+  let n=0;
+  for(const d of ds){
+    try{
+      const r=await fetch(oeffentlicheUrl(d.pfad));
+      if(!r.ok) continue;
+      const b=await r.blob();
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(b); a.download=d.name; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+      n++;
+    }catch(e){}
+    // kurze Pause, sonst verschluckt der Browser Downloads
+    await new Promise(r=>setTimeout(r,700));
+  }
+  melde(n+' von '+ds.length+' Dateien gespeichert.',4000);
+}
+
 async function dateiEntfernen(d,still){
   try{
     await fetch(basisUrl()+'/storage/v1/object/'+EIMER+'/'+d.pfad,{
@@ -618,17 +720,93 @@ async function dateiEntfernen(d,still){
 
 function dateienAufraeumen(){
   if(!speicherBereit()) return;
-  const alt=aktiv(doc.dateien).filter(d=>jetzt()-d.hoch>=LEBENSDAUER);
+  // Sprachnotizen sind an eine Aufgabe gebunden und bleiben, bis sie abgehakt wird
+  const alt=aktiv(doc.dateien).filter(d=>!d.dauerhaft&&jetzt()-d.hoch>=LEBENSDAUER);
   if(!alt.length) return;
   alt.forEach(d=>dateiEntfernen(d,true));
   setTimeout(()=>{ sichern(); zeichnen(); planeSync(); },600);
 }
 
+/* ============ Sprachnotizen ============ */
+let aufnahme=null, aufnahmeTeile=[], aufnahmeStart=0, aufnahmeUhr=null;
+
+function tonDatei(a){ return a.ton?aktiv(doc.dateien).find(d=>d.id===a.ton):null; }
+function dauerText(ms){
+  const s=Math.round(ms/1000);
+  return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+}
+
+async function aufnahmeStarten(){
+  if(!speicherBereit()) return melde('Sprachnotizen brauchen den eingerichteten Abgleich.',4500);
+  if(!navigator.mediaDevices||!window.MediaRecorder) return melde('Dieser Browser kann nicht aufnehmen.',4000);
+  let spur;
+  try{ spur=await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e){ return melde('Kein Zugriff auf das Mikrofon.',4000); }
+  const typen=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'];
+  const typ=typen.find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||'';
+  aufnahme=typ?new MediaRecorder(spur,{mimeType:typ}):new MediaRecorder(spur);
+  aufnahmeTeile=[]; aufnahmeStart=jetzt();
+  aufnahme.ondataavailable=e=>{ if(e.data&&e.data.size) aufnahmeTeile.push(e.data); };
+  aufnahme.onstop=()=>{
+    spur.getTracks().forEach(t=>t.stop());
+    const dauer=jetzt()-aufnahmeStart;
+    const blob=new Blob(aufnahmeTeile,{type:aufnahme.mimeType||'audio/webm'});
+    aufnahme=null; aufnahmeTeile=[];
+    clearInterval(aufnahmeUhr); aufnahmeUhr=null;
+    if(dauer<700||!blob.size){ zeichnen(); return melde('Zu kurz – nichts aufgenommen.',2500); }
+    tonSpeichern(blob,dauer);
+  };
+  aufnahme.start();
+  aufnahmeUhr=setInterval(()=>{
+    const el=$('aufnahmezeit');
+    if(el) el.textContent=dauerText(jetzt()-aufnahmeStart);
+    if(jetzt()-aufnahmeStart>5*60000) aufnahmeBeenden();
+  },500);
+  zeichnen();
+}
+function aufnahmeBeenden(){ if(aufnahme&&aufnahme.state!=='inactive') aufnahme.stop(); }
+
+function tonSpeichern(blob,dauer){
+  const endung=(blob.type.includes('mp4')?'.m4a':blob.type.includes('ogg')?'.ogg':'.webm');
+  const name='Sprachnotiz '+new Date().toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+endung;
+  const datei=new File([blob],name,{type:blob.type});
+  melde('Sprachnotiz wird gesichert …',4000);
+  hochladen(datei,true,eintrag=>{
+    if(!eintrag) return;
+    const minPos=Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0));
+    doc.aufgaben.unshift({ id:uid(), text:'Sprachnotiz ('+dauerText(dauer)+')', notiz:'',
+      faellig:null, zeit:null, wichtig:false, ton:eintrag.id, tonDauer:dauer,
+      erledigt:false, erledigtAm:null, bereichId:cfg.ziel??null, vorlageId:null,
+      pos:minPos-10, ts:jetzt(), geloescht:false });
+    geaendert();
+    melde('Sprachnotiz angelegt.',2500);
+  });
+}
+
+let spieler=null, spieltId=null;
+async function tonSpielen(a){
+  const d=tonDatei(a);
+  if(!d) return melde('Die Aufnahme ist nicht mehr vorhanden.',3500);
+  if(spieler&&spieltId===a.id){ spieler.pause(); spieler=null; spieltId=null; return zeichnen(); }
+  if(spieler){ spieler.pause(); spieler=null; }
+  spieler=new Audio(oeffentlicheUrl(d.pfad));
+  spieltId=a.id;
+  spieler.onended=()=>{ spieler=null; spieltId=null; zeichnen(); };
+  spieler.onerror=()=>{ spieler=null; spieltId=null; zeichnen(); melde('Die Aufnahme ließ sich nicht abspielen.',3500); };
+  try{ await spieler.play(); zeichnen(); }
+  catch(e){ spieler=null; spieltId=null; melde('Abspielen nicht möglich.',3000); }
+}
+
 /* ============ Ansichten ============ */
-const REITER=[['heute','Heute'],['alle','Alle'],['bereiche','Bereiche'],['notizen','Notizen'],['serien','Serien'],['erledigt','Erledigt'],['dateien','Dateien']];
+const REITER=[['heute','Heute'],['alle','Alle'],['bereiche','Bereiche'],['notizen','Notizen'],['serien','Serien'],['erledigt','Erledigt'],['dateien','Dateien'],['suche','Suche']];
+let suchbegriff='';
 
 document.getElementById('dateiwahl').onchange=e=>{
-  [...(e.target.files||[])].forEach(hochladen);
+  [...(e.target.files||[])].forEach(f=>hochladen(f));
+  e.target.value='';
+};
+document.getElementById('fotowahl').onchange=e=>{
+  [...(e.target.files||[])].forEach(f=>hochladen(f));
   e.target.value='';
 };
 
@@ -637,6 +815,8 @@ function zeichneNav(){
     `<button data-v="${k}" aria-current="${(ansicht===k||(ansicht==='bereich'&&k==='bereiche'))}">${l}</button>`).join('');
   $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{ offenerBereich=null; setzeAnsicht(b.dataset.v); });
 }
+function amRechner(){ return window.matchMedia('(min-width:900px)').matches; }
+
 function setzeAnsicht(v){ ansicht=v; cfg.ansicht=(v==='bereich'?'bereiche':v); sichern(); zeichnen(); }
 
 function zeichneSeite(){
@@ -651,8 +831,10 @@ function zeichneSeite(){
   $('seite').innerHTML=
     `<div class="s-logo" id="s-logo"><span>To do</span><i></i></div>
      <div class="s-nav">
+       ${eintrag('start','Dashboard',null,null)}
        ${eintrag('heute','Heute',heuteN,null)}
        ${eintrag('alle','Alle',offene.length,null)}
+       ${eintrag('suche','Suche',null,null)}
        ${eintrag('notizen','Notizen',null,null)}
        ${eintrag('serien','Serien',aktiv(doc.vorlagen).length,null)}
        ${eintrag('erledigt','Erledigt',null,null)}
@@ -691,9 +873,15 @@ function aufgabenHtml(liste,zeigeBereich){
     if(zeigeBereich&&b) teile.push(`<span class="bereichs-tag"><span class="punkt" style="background:${esc(b.farbe)}"></span>${esc(b.name)}</span>`);
     if(a.vorlageId) teile.push('<span>Serie</span>');
     if(a.notiz&&a.notiz.trim()) teile.push('<span class="notizzeichen">Notiz</span>');
-    return `<li class="auf${a.erledigt?' fertig':''}" data-id="${a.id}">
+    return `<li class="auf${a.erledigt?' fertig':''}${a.wichtig&&!a.erledigt?' istwichtig':''}" data-id="${a.id}">
       <button class="kasten" style="${a.erledigt?`background:${esc(f)};border-color:${esc(f)}`:`border-color:${esc(f)}`}" aria-label="Abhaken"></button>
+      ${a.ton?`<button class="ton${spieltId===a.id?' laeuft':''}" aria-label="Abspielen" title="Sprachnotiz abspielen">
+        <svg viewBox="0 0 24 24">${spieltId===a.id
+          ?'<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>'
+          :'<path d="M7 4.5l12 7.5-12 7.5z"/>'}</svg></button>`:''}
       <div class="mitte"><div class="titel">${esc(a.text)}</div>${teile.length?`<div class="unten">${teile.join('')}</div>`:''}</div>
+      ${a.erledigt?'':`<button class="stern${a.wichtig?' an':''}" aria-label="Als wichtig markieren" title="Wichtig">
+        <svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.6 6 .8-4.4 4.2 1.1 6.1-5.3-3-5.3 3 1.1-6.1L3.4 9.9l6-.8z"/></svg></button>`}
       ${a.erledigt?'':`<button class="griff" aria-label="Verschieben" title="Zum Verschieben ziehen">
         <svg viewBox="0 0 10 16" fill="currentColor"><circle cx="2" cy="3" r="1.4"/><circle cx="8" cy="3" r="1.4"/><circle cx="2" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="2" cy="13" r="1.4"/><circle cx="8" cy="13" r="1.4"/></svg></button>`}
     </li>`;
@@ -703,6 +891,10 @@ function bindeAufgaben(){
   document.querySelectorAll('li.auf').forEach(li=>{
     const a=doc.aufgaben.find(x=>x.id===li.dataset.id); if(!a) return;
     li.querySelector('.kasten').onclick=e=>{ e.stopPropagation(); abhaken(a); };
+    const stern=li.querySelector('.stern');
+    if(stern) stern.onclick=e=>{ e.stopPropagation(); sternUm(a); };
+    const ton=li.querySelector('.ton');
+    if(ton) ton.onclick=e=>{ e.stopPropagation(); tonSpielen(a); };
     const griff=li.querySelector('.griff');
     if(griff){
       griff.addEventListener('pointerdown',e=>ziehenStart(e,li));
@@ -711,7 +903,7 @@ function bindeAufgaben(){
     /* die gesamte Zeile öffnet die Aufgabe – außer Kästchen und Griff,
        und nicht direkt nach dem Verschieben */
     li.onclick=e=>{
-      if(e.target.closest('.kasten')||e.target.closest('.griff')) return;
+      if(e.target.closest('.kasten')||e.target.closest('.griff')||e.target.closest('.stern')||e.target.closest('.ton')) return;
       if(jetzt()-letztesZiehen<350) return;
       blattAufgabe(a);
     };
@@ -720,7 +912,13 @@ function bindeAufgaben(){
 let letztesZiehen=0;
 
 /* eigene Reihenfolge: Ziehen am Griff */
-function sortiert(liste){ return liste.slice().sort((x,y)=>(x.pos??0)-(y.pos??0)); }
+function sortiert(liste){
+  return liste.slice().sort((x,y)=>{
+    const w=(y.wichtig?1:0)-(x.wichtig?1:0);
+    return w||((x.pos??0)-(y.pos??0));
+  });
+}
+function sternUm(a){ a.wichtig=!a.wichtig; a.ts=jetzt(); geaendert(); }
 
 function ziehenStart(e,li){
   if(e.button!==undefined&&e.button!==0) return;
@@ -771,8 +969,10 @@ function nachOben(a){
 
 function zeichnen(){
   if(serienPruefen()) sichern();
+  if(ansicht==='start'&&!amRechner()) ansicht='heute';
   zeichneNav();
   zeichneSeite();
+  document.querySelector('.rahmen').classList.toggle('weit',ansicht==='start');
   const c=$('inhalt');
   const offene=aktiv(doc.aufgaben).filter(a=>!a.erledigt);
 
@@ -891,12 +1091,16 @@ function zeichnen(){
       c.innerHTML=`<div class="leer"><b>Noch nicht eingerichtet.</b>
         Für die Dateiübertragung braucht es den Abgleich mit Supabase. Oben rechts das Zahnrad.</div>`;
     }else{
-      const ds=aktiv(doc.dateien).sort((x,y)=>y.hoch-x.hoch);
+      const ds=aktiv(doc.dateien).filter(d=>!d.dauerhaft).sort((x,y)=>y.hoch-x.hoch);
       const laufend=Object.keys(ladeStand);
       c.innerHTML=
         `<div class="ablage" id="ablage">
            <b>Datei auswählen</b>
            <span>oder hierher ziehen &middot; höchstens 50 MB</span>
+         </div>
+         <div class="knopfreihe" style="margin:-6px 0 16px">
+           <button class="knopf" id="d-foto">Foto aufnehmen</button>
+           ${aktiv(doc.dateien).filter(d=>!d.dauerhaft).length>1?'<button class="knopf leise" id="d-alle">Alle herunterladen</button>':''}
          </div>
          ${laufend.map(p=>`<div class="ladezeile"><span>Wird übertragen …</span>
             <div class="balken"><i data-balken="${p}" style="width:${ladeStand[p]}%"></i></div></div>`).join('')}
@@ -917,9 +1121,113 @@ function zeichnen(){
       ['dragenter','dragover'].forEach(t=>ablage.addEventListener(t,e=>{ e.preventDefault(); ablage.classList.add('drueber'); }));
       ['dragleave','drop'].forEach(t=>ablage.addEventListener(t,e=>{ e.preventDefault(); ablage.classList.remove('drueber'); }));
       ablage.addEventListener('drop',e=>{ [...(e.dataTransfer.files||[])].forEach(hochladen); });
+      $('d-foto').onclick=()=>$('fotowahl').click();
+      if($('d-alle')) $('d-alle').onclick=alleHerunterladen;
       c.querySelectorAll('[data-hol]').forEach(b=>b.onclick=()=>herunterladen(doc.dateien.find(x=>x.id===b.dataset.hol)));
       c.querySelectorAll('[data-weg]').forEach(b=>b.onclick=()=>dateiEntfernen(doc.dateien.find(x=>x.id===b.dataset.weg)));
     }
+  }
+
+  else if(ansicht==='start'){
+    if(!amRechner()){ return setzeAnsicht('heute'); }
+    const offene=aktiv(doc.aufgaben).filter(a=>!a.erledigt);
+    const ueber=sortiert(offene.filter(a=>a.faellig&&tageBis(a.faellig)<0));
+    const heut=sortiert(offene.filter(a=>a.faellig&&tageBis(a.faellig)===0));
+    const stern=sortiert(offene.filter(a=>a.wichtig));
+    const toene=sortiert(offene.filter(a=>a.ton));
+    const posteingang=sortiert(offene.filter(a=>!a.faellig&&!a.ton));
+    const woche=offene.filter(a=>a.faellig&&tageBis(a.faellig)>0&&tageBis(a.faellig)<=7)
+                      .sort((x,y)=>x.faellig<y.faellig?-1:1);
+    const dateien=aktiv(doc.dateien).filter(d=>!d.dauerhaft);
+    const serie=aktiv(doc.vorlagen).filter(v=>v.naechster).sort((x,y)=>x.naechster<y.naechster?-1:1)[0];
+    const heuteFertig=aktiv(doc.aufgaben).filter(a=>a.erledigt&&a.erledigtAm&&isoVon(new Date(a.erledigtAm))===isoHeute());
+    const notiz=(doc.notiz&&doc.notiz.text||'').trim();
+
+    const kachel=(titel,inhalt,extra)=>`<section class="kachel${extra||''}"><h3>${titel}</h3>${inhalt}</section>`;
+    const kurz=(liste,leer)=>liste.length
+      ? '<ul class="knapp">'+liste.map(a=>{
+          const b=bereichVon(a.bereichId);
+          return `<li data-oeffne="${a.id}">
+            <button class="kasten" data-hak="${a.id}" style="border-color:${esc(farbeVon(a.bereichId))}" aria-label="Abhaken"></button>
+            ${a.ton?`<button class="ton${spieltId===a.id?' laeuft':''}" data-ton="${a.id}" aria-label="Abspielen"><svg viewBox="0 0 24 24">${spieltId===a.id?'<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>':'<path d="M7 4.5l12 7.5-12 7.5z"/>'}</svg></button>`:''}
+            <span class="t">${a.wichtig?'<span class="ministern">&#9733;</span>':''}${esc(a.text)}</span>
+            <span class="n">${a.faellig?esc(fmtFaellig(a.faellig))+(a.zeit?' '+esc(a.zeit):''):(b?esc(b.name):'')}</span>
+          </li>`;}).join('')+'</ul>'
+      : `<p class="nix">${leer}</p>`;
+
+    c.innerHTML=`<div class="brett">
+      <div class="brett-kopf">
+        <div><span class="gross">${esc(new Date().toLocaleDateString('de-DE',{weekday:'long'}))}</span>
+             <span class="klein">${esc(new Date().toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'}))}</span></div>
+        <div class="zahlen">
+          ${ueber.length?`<span class="z warn"><b>${ueber.length}</b> überfällig</span>`:''}
+          <span class="z"><b>${heut.length}</b> heute</span>
+          <span class="z"><b>${offene.length}</b> offen</span>
+          ${heuteFertig.length?`<span class="z gut"><b>${heuteFertig.length}</b> heute erledigt</span>`:''}
+        </div>
+      </div>
+      <div class="raster">
+        ${ueber.length?kachel('Überfällig',kurz(ueber,''),' dringend'):''}
+        ${kachel('Heute',kurz(heut,'Heute ist nichts terminiert.'))}
+        ${kachel('Wichtig',kurz(stern,'Nichts mit Stern markiert.'))}
+        ${kachel('Sprachnotizen',kurz(toene,'Keine offenen Sprachnotizen.'))}
+        ${kachel('Posteingang · ohne Datum',kurz(posteingang,'Alles einsortiert.'))}
+        ${kachel('Nächste sieben Tage',kurz(woche,'Die Woche ist frei.'))}
+        ${kachel('Serien', serie
+            ? `<p class="zeile"><b>${esc(serie.text)}</b><br><span class="nix">${esc(rhythmusText(serie.rhythmus))} · nächster Termin ${esc(new Date(serie.naechster+'T12:00:00').toLocaleDateString('de-DE'))}</span></p>`
+            : '<p class="nix">Keine Serien angelegt.</p>')}
+        ${kachel('Dateien', dateien.length
+            ? '<ul class="knapp">'+dateien.slice(0,5).map(d=>`<li><span class="t">${esc(d.name)}</span><span class="n">${esc(restText(d.hoch))}</span></li>`).join('')+'</ul>'
+            : '<p class="nix">Keine Dateien in der Ablage.</p>')}
+        ${kachel('Notizen', notiz
+            ? '<p class="zeile" id="k-notiz">'+esc(notiz.slice(0,320))+(notiz.length>320?' …':'')+'</p>'
+            : '<p class="nix">Das Notizfeld ist leer.</p>')}
+      </div>
+    </div>`;
+
+    c.querySelectorAll('[data-hak]').forEach(b=>b.onclick=e=>{
+      e.stopPropagation(); const a=doc.aufgaben.find(x=>x.id===b.dataset.hak); if(a) abhaken(a); });
+    c.querySelectorAll('[data-ton]').forEach(b=>b.onclick=e=>{
+      e.stopPropagation(); const a=doc.aufgaben.find(x=>x.id===b.dataset.ton); if(a) tonSpielen(a); });
+    c.querySelectorAll('[data-oeffne]').forEach(li=>li.onclick=()=>{
+      const a=doc.aufgaben.find(x=>x.id===li.dataset.oeffne); if(a) blattAufgabe(a); });
+    if($('k-notiz')) $('k-notiz').onclick=()=>setzeAnsicht('notizen');
+  }
+
+  else if(ansicht==='suche'){
+    const q=suchbegriff.trim().toLowerCase();
+    let h=`<input type="text" id="suchfeld" placeholder="Aufgaben und Notizen durchsuchen" value="${esc(suchbegriff)}" autocomplete="off">`;
+    if(q.length<2){
+      h+=`<div class="leer"><b>Wonach suchst du?</b>Durchsucht offene und erledigte Aufgaben, Notizen und Serien.</div>`;
+    }else{
+      const passt=t=>String(t||'').toLowerCase().includes(q);
+      const offen=aktiv(doc.aufgaben).filter(a=>!a.erledigt&&(passt(a.text)||passt(a.notiz)));
+      const fertig=aktiv(doc.aufgaben).filter(a=>a.erledigt&&(passt(a.text)||passt(a.notiz)));
+      const serien=aktiv(doc.vorlagen).filter(v=>passt(v.text)||passt(v.notiz));
+      const notizTreffer=passt(doc.notiz&&doc.notiz.text);
+      if(offen.length) h+='<h2>Offen ('+offen.length+')</h2>'+aufgabenHtml(sortiert(offen),true);
+      if(fertig.length) h+='<h2>Erledigt ('+fertig.length+')</h2>'+aufgabenHtml(fertig,true);
+      if(serien.length) h+='<h2>Serien</h2><ul>'+serien.map(v=>{
+        const b=bereichVon(v.bereichId);
+        return `<li class="serie" data-id="${v.id}"><div class="kopfz">
+          <span class="punkt" style="background:${esc(b?b.farbe:'#B8B8B8')}"></span>
+          <span class="nam">${esc(v.text)}</span></div>
+          <div class="unten">${esc(rhythmusText(v.rhythmus))} &middot; ${esc(new Date(v.naechster+'T12:00:00').toLocaleDateString('de-DE'))}</div></li>`;
+      }).join('')+'</ul>';
+      if(notizTreffer){
+        const t=doc.notiz.text, i=t.toLowerCase().indexOf(q);
+        h+='<h2>Notizen</h2><div class="trefferzeile" id="zur-notiz">…'+esc(t.slice(Math.max(0,i-60),i+120))+'…</div>';
+      }
+      if(!offen.length&&!fertig.length&&!serien.length&&!notizTreffer)
+        h+=`<div class="leer"><b>Nichts gefunden.</b>Für „${esc(suchbegriff)}“ gibt es keinen Treffer.</div>`;
+    }
+    c.innerHTML=h;
+    const feld=$('suchfeld');
+    feld.oninput=()=>{ suchbegriff=feld.value; const pos=feld.selectionStart; zeichnen();
+      const neu=$('suchfeld'); if(neu){ neu.focus(); try{neu.setSelectionRange(pos,pos);}catch(e){} } };
+    bindeAufgaben();
+    c.querySelectorAll('li.serie').forEach(li=>li.onclick=()=>blattSerie(doc.vorlagen.find(v=>v.id===li.dataset.id)));
+    if($('zur-notiz')) $('zur-notiz').onclick=()=>setzeAnsicht('notizen');
   }
 
   else if(ansicht==='erledigt'){
@@ -1003,6 +1311,7 @@ function blattAufgabe(a){
     ${a.vorlageId?`<p class="hinweis">Diese Aufgabe stammt aus einer Serie. Beim Abhaken wird automatisch der nächste Termin gesetzt.</p>`:''}
     <div class="knopfreihe">
       <button class="knopf voll" id="f-ok">Speichern</button>
+      <button class="knopf" id="f-stern">${a.wichtig?'Stern entfernen':'Als wichtig markieren'}</button>
       <button class="knopf" id="f-oben">Ganz nach oben</button>
       <button class="knopf" id="f-ab">Abbrechen</button>
       <button class="knopf leise" id="f-weg">Löschen</button>
@@ -1015,6 +1324,7 @@ function blattAufgabe(a){
     if(b.dataset.z&&!$('f-datum').value) $('f-datum').value=isoHeute();
   });
   $('f-oben').onclick=()=>{ blattZu(); nachOben(a); };
+  $('f-stern').onclick=()=>{ blattZu(); sternUm(a); };
   $('f-ok').onclick=()=>{
     const t=$('f-text').value.trim(); if(t.length<1) return;
     a.text=t; a.faellig=$('f-datum').value||null; a.zeit=$('f-zeit').value||null;
@@ -1215,6 +1525,7 @@ function verschmelze(a,b){
 }
 async function sync(still){
   if(!cfg.url||!cfg.key||!cfg.code||syncLaeuft) return;
+  if(!navigator.onLine){ if(!still) melde('Kein Netz – wird nachgeholt.',3000); return; }
   syncLaeuft=true;
   try{
     const fern=await rpc('sync_pull',{p_code:cfg.code})||{};
@@ -1251,14 +1562,47 @@ function bytesZuB64(buf){
 }
 
 async function swStarten(){
-  if(!pushMoeglich()) return null;
+  if(!('serviceWorker' in navigator)) return null;
   try{
     swReg=await navigator.serviceWorker.register('./sw.js');
     await navigator.serviceWorker.ready;
     swKonfigSenden();
+
+    // Auf eine neue Fassung achten und sie anbieten statt sie aufzuzwingen
+    if(swReg.waiting) neueFassung(swReg.waiting);
+    swReg.addEventListener('updatefound',()=>{
+      const neu=swReg.installing;
+      if(!neu) return;
+      neu.addEventListener('statechange',()=>{
+        if(neu.state==='installed'&&navigator.serviceWorker.controller) neueFassung(neu);
+      });
+    });
+    let laedtNeu=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(laedtNeu) return; laedtNeu=true; location.reload();
+    });
+    setTimeout(()=>{ try{swReg.update();}catch(e){} },3000);
     return swReg;
   }catch(e){ return null; }
 }
+
+function neueFassung(arbeiter){
+  const b=$('neuband');
+  if(!b||b.dataset.auf==='1') return;
+  b.dataset.auf='1';
+  b.innerHTML='Neue Fassung verfügbar <button id="neuband-ok">Jetzt laden</button>';
+  b.classList.add('auf');
+  $('neuband-ok').onclick=()=>{ b.classList.remove('auf'); arbeiter.postMessage({typ:'jetzt-aktualisieren'}); };
+}
+
+/* Verbindungszustand sichtbar machen */
+function netzStand(){
+  const b=$('offlineband');
+  if(!b) return;
+  b.classList.toggle('auf',!navigator.onLine);
+}
+window.addEventListener('online',()=>{ netzStand(); sync(true); });
+window.addEventListener('offline',netzStand);
 function swKonfigSenden(){
   if(!navigator.serviceWorker||!navigator.serviceWorker.controller) return;
   navigator.serviceWorker.controller.postMessage({typ:'cfg',cfg:{url:cfg.url,key:cfg.key,code:cfg.code}});
@@ -1474,6 +1818,7 @@ $('datei').onchange=e=>{
   if(ansicht==='bereich') ansicht='bereiche';
   $('logo').onclick=()=>{ offenerBereich=null; setzeAnsicht('heute'); };
   zeichnen();
+  netzStand();
   sync(true);
   swStarten();
 })();

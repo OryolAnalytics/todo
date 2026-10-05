@@ -5,12 +5,50 @@
    Vorteil: Die Aufgabentexte laufen nie über fremde Push-Server. */
 
 const CFG_CACHE = 'todo-cfg-v1';
+const APP_CACHE = 'todo-app-v3';
+const DATEIEN = ['./', './index.html', './manifest.json',
+                 './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
-self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+/* Beim Einbau werden die App-Dateien abgelegt, damit sie ohne Netz laufen.
+   Kein skipWaiting: Die neue Fassung übernimmt erst, wenn der Nutzer zustimmt –
+   sonst würde mitten in der Arbeit die Oberfläche ausgetauscht. */
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(APP_CACHE).then(c => c.addAll(DATEIEN)).catch(() => {}));
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil((async () => {
+    const namen = await caches.keys();
+    await Promise.all(namen.map(n => (n !== APP_CACHE && n !== CFG_CACHE) ? caches.delete(n) : null));
+    await self.clients.claim();
+  })());
+});
+
+/* Nur eigene Dateien bedienen. Alles Richtung Supabase geht immer ins Netz,
+   damit keine veralteten Aufgaben ausgeliefert werden. */
+self.addEventListener('fetch', e => {
+  const u = new URL(e.request.url);
+  if (e.request.method !== 'GET') return;
+  if (u.origin !== self.location.origin) return;
+  if (u.pathname.endsWith('/sw.js')) return;
+
+  e.respondWith((async () => {
+    const treffer = await caches.match(e.request, { ignoreSearch: true });
+    const ausDemNetz = fetch(e.request).then(r => {
+      if (r && r.ok) caches.open(APP_CACHE).then(c => c.put(e.request, r.clone()));
+      return r;
+    }).catch(() => null);
+    if (treffer) { ausDemNetz; return treffer; }      // erst zeigen, im Hintergrund erneuern
+    const neu = await ausDemNetz;
+    if (neu) return neu;
+    const start = await caches.match('./index.html');
+    return start || new Response('Offline', { status: 503, statusText: 'Offline' });
+  })());
+});
 
 /* Die App reicht Zugangsdaten und Sync-Code herüber. */
 self.addEventListener('message', e => {
+  if (e.data && e.data.typ === 'jetzt-aktualisieren') { self.skipWaiting(); return; }
   if (e.data && e.data.typ === 'cfg') {
     e.waitUntil(caches.open(CFG_CACHE).then(c =>
       c.put('cfg', new Response(JSON.stringify(e.data.cfg)))));

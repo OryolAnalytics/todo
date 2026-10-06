@@ -835,12 +835,10 @@ function kachelnStapeln(){
     const d=document.createElement('div'); d.className='spalte';
     raster.appendChild(d); spalten.push(d);
   }
-  // jede Kachel kommt in die bislang kürzeste Spalte
-  kacheln.forEach(k=>{
-    let ziel=spalten[0];
-    spalten.forEach(s=>{ if(s.offsetHeight<ziel.offsetHeight) ziel=s; });
-    ziel.appendChild(k);
-  });
+  // Feste Zuordnung: Kachel 1 in Spalte 1, Kachel 2 in Spalte 2 und so fort.
+  // Die Kacheln behalten dadurch ihren Platz; geschlossen werden nur die
+  // senkrechten Lücken innerhalb einer Spalte.
+  kacheln.forEach((k,i)=>spalten[i%anzahl].appendChild(k));
 }
 let stapelUhr=null;
 window.addEventListener('resize',()=>{
@@ -1027,9 +1025,9 @@ function zeichnen(){
       if(t<0) grp.ueber.push(a); else if(t===0) grp.heute.push(a); else if(t<=7) grp.woche.push(a); else grp.spaeter.push(a); });
     Object.keys(grp).forEach(k=>grp[k]=sortiert(grp[k]));
     let h='';
-    if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
     if(grp.ueber.length) h+='<h2>Überfällig</h2>'+aufgabenHtml(grp.ueber,true);
     if(grp.heute.length) h+='<h2>Heute</h2>'+aufgabenHtml(grp.heute,true);
+    if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
     if(grp.woche.length) h+='<h2>Diese Woche</h2>'+aufgabenHtml(grp.woche,true);
     if(grp.spaeter.length) h+='<h2>Später</h2>'+aufgabenHtml(grp.spaeter,true);
     c.innerHTML=h||`<div class="leer"><b>Liste ist leer.</b>Unten eintippen oder das Mikrofon drücken.</div>`;
@@ -1170,7 +1168,6 @@ function zeichnen(){
     const woche=offene.filter(a=>a.faellig&&tageBis(a.faellig)>0&&tageBis(a.faellig)<=7)
                       .sort((x,y)=>x.faellig<y.faellig?-1:1);
     const dateien=aktiv(doc.dateien).filter(d=>!d.dauerhaft);
-    const serie=aktiv(doc.vorlagen).filter(v=>v.naechster).sort((x,y)=>x.naechster<y.naechster?-1:1)[0];
     const heuteFertig=aktiv(doc.aufgaben).filter(a=>a.erledigt&&a.erledigtAm&&isoVon(new Date(a.erledigtAm))===isoHeute());
     const notiz=(doc.notiz&&doc.notiz.text||'').trim();
 
@@ -1204,9 +1201,6 @@ function zeichnen(){
         ${kachel('Sprachnotizen',kurz(toene,'Keine offenen Sprachnotizen.'))}
         ${kachel('Posteingang · ohne Datum',kurz(posteingang,'Alles einsortiert.'))}
         ${kachel('Nächste sieben Tage',kurz(woche,'Die Woche ist frei.'))}
-        ${kachel('Serien', serie
-            ? `<p class="zeile"><b>${esc(serie.text)}</b><br><span class="nix">${esc(rhythmusText(serie.rhythmus))} · nächster Termin ${esc(new Date(serie.naechster+'T12:00:00').toLocaleDateString('de-DE'))}</span></p>`
-            : '<p class="nix">Keine Serien angelegt.</p>')}
         ${kachel('Dateien', dateien.length
             ? '<ul class="knapp">'+dateien.slice(0,5).map(d=>`<li><span class="t">${esc(d.name)}</span><span class="n">${esc(restText(d.hoch))}</span></li>`).join('')+'</ul>'
             : '<p class="nix">Keine Dateien in der Ablage.</p>')}

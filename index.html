@@ -5,343 +5,403 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>To do</title>
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#FFFFFF">
+<meta name="theme-color" content="#F1F0EA">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="To do">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" href="./icon-192.png">
 <style>
+  /* ---------------------------------------------------------------
+     Gestaltung: warmes Papier, ruhige Karten, Serifen für Überschriften.
+     Alle Farben als Variablen, damit der Dunkelmodus nur sie austauscht.
+     --------------------------------------------------------------- */
   :root{
-    --schrift:"Times New Roman",Times,"Liberation Serif",serif;
-    --tinte:#111111;
-    --papier:#FFFFFF;
-    --grau:#767676;
-    --linie:#DEDEDE;
-    --feld:#F7F7F7;
-    --auswahl:#EFEFEF;
-    --warn:#B03A2E;
-    --schleier:rgba(0,0,0,.35);
-    --schatten:rgba(0,0,0,.12);
+    --schrift:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --schrift-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --schrift-titel:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+
+    --papier:#F1F0EA;      /* Hintergrund der Seite */
+    --karte:#F7F6F1;       /* Flächen, die darauf liegen */
+    --feld:#FDFCF9;        /* Eingabefelder */
+    --tinte:#1D1C19;
+    --grau:#716D64;
+    --linie:#E0DDD2;
+    --auswahl:#E5E8DF;     /* sanftes Salbei für Aktives */
+    --akzent:#4C6B50;
+    --warn:#A4453A;
+    --gut:#3F7047;
+    --schleier:rgba(28,26,20,.34);
+    --schatten:0 1px 2px rgba(40,36,25,.05);
+    --rund:14px;
   }
-  html[data-schrift="sans"]{
-    --schrift:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  }
-  html[data-schrift="georgia"]{
-    --schrift:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,serif;
-  }
-  /* Das Logo bleibt immer in der Schrift der Wortmarke */
-  .logo,.s-logo{font-family:"Times New Roman",Times,"Liberation Serif",serif}
+  html[data-schrift="sans"]{ --schrift:var(--schrift-ui) }
+  html[data-schrift="times"]{ --schrift:"Times New Roman",Times,"Liberation Serif",serif;
+                              --schrift-titel:"Times New Roman",Times,"Liberation Serif",serif }
 
   html[data-thema="dunkel"]{
-    --tinte:#E9E9E5;
-    --papier:#131313;
-    --grau:#8C8C86;
-    --linie:#2E2E2C;
-    --feld:#1D1D1B;
-    --auswahl:#262624;
-    --warn:#E88075;
+    --papier:#15150F;
+    --karte:#1C1C16;
+    --feld:#22221B;
+    --tinte:#EDEBE1;
+    --grau:#938E82;
+    --linie:#2E2E26;
+    --auswahl:#2A3129;
+    --akzent:#9CBCA0;
+    --warn:#D9897D;
+    --gut:#8FBE96;
     --schleier:rgba(0,0,0,.6);
-    --schatten:rgba(0,0,0,.5);
+    --schatten:0 1px 2px rgba(0,0,0,.3);
     color-scheme:dark;
   }
-  /* Bereichsfarben sind für weißen Grund gewählt; dunkel brauchen sie mehr Leuchtkraft */
+  /* Bereichsfarben sind für helles Papier gewählt; dunkel brauchen sie Leuchtkraft */
   html[data-thema="dunkel"] .punkt,
   html[data-thema="dunkel"] .kasten,
   html[data-thema="dunkel"] .farbe{filter:brightness(1.45) saturate(1.05)}
+
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;background:var(--papier)}
   body{
     font-family:var(--schrift);
-    color:var(--tinte);font-size:18px;line-height:1.4;
+    color:var(--tinte);font-size:17px;line-height:1.45;
     min-height:100vh;
-    padding:18px 18px calc(150px + env(safe-area-inset-bottom));
+    padding:18px 16px calc(150px + env(safe-area-inset-bottom));
     display:flex;justify-content:center;
+    -webkit-font-smoothing:antialiased;
   }
-  .rahmen{width:100%;max-width:640px}
+  .rahmen{width:100%;max-width:680px}
   aside{display:none}
-  .wrap{width:100%;max-width:640px}
+  .wrap{width:100%}
   button,input,select,textarea{font-family:inherit;color:inherit}
 
-  /* Kopf */
-  .kopf{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
-  .logo{display:inline-block;text-align:center;cursor:pointer}
-  .logo span{font-size:34px;line-height:1;letter-spacing:.01em;display:block}
-  .logo i{display:block;height:1.5px;background:var(--tinte);margin:5px auto 0;width:72%}
-  .zahn{background:none;border:0;padding:6px;cursor:pointer;font-size:22px;line-height:1;color:var(--grau)}
+  /* ---------- Kopf (Handy) ---------- */
+  .kopf{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .logo{display:inline-block;cursor:pointer;font-family:var(--schrift-titel)}
+  .logo span{font-size:27px;line-height:1;letter-spacing:.14em;display:block;font-weight:400}
+  .logo i{display:none}
+  .zahn{background:none;border:0;padding:8px;margin-right:-8px;cursor:pointer;color:var(--grau);
+        line-height:0;border-radius:50%}
+  .zahn:hover{background:var(--karte);color:var(--tinte)}
+  .zahn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6}
 
-  /* Reiter */
-  nav{display:flex;gap:20px;border-bottom:1px solid var(--linie);margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+  /* ---------- Reiter als Pillen ---------- */
+  nav{display:flex;gap:7px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none;
+      padding-bottom:2px;-webkit-overflow-scrolling:touch}
   nav::-webkit-scrollbar{display:none}
   nav button{
-    background:none;border:0;padding:0 0 9px;cursor:pointer;white-space:nowrap;
-    font-size:16px;color:var(--grau);position:relative;
+    background:none;border:1px solid var(--linie);border-radius:999px;
+    padding:6px 14px;cursor:pointer;white-space:nowrap;
+    font-family:var(--schrift-ui);font-size:14px;color:var(--grau);
+    transition:background .12s,color .12s,border-color .12s;
   }
-  nav button[aria-current="true"]{color:var(--tinte)}
-  nav button[aria-current="true"]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--tinte)}
+  nav button:hover{color:var(--tinte)}
+  nav button[aria-current="true"]{background:var(--auswahl);border-color:transparent;color:var(--akzent)}
 
-  h2{font-size:15px;font-weight:normal;font-variant:small-caps;letter-spacing:.08em;color:var(--grau);
-     margin:22px 0 2px;border-bottom:1px solid var(--linie);padding-bottom:5px}
-  h2:first-child{margin-top:0}
+  /* ---------- Karten ---------- */
+  .karte{
+    background:var(--karte);border:1px solid var(--linie);border-radius:var(--rund);
+    padding:16px 18px;margin-bottom:14px;box-shadow:var(--schatten);
+  }
+  .karte>h2{margin:0 0 4px}
+  h2{
+    font-family:var(--schrift-titel);font-size:20px;font-weight:400;letter-spacing:-.01em;
+    color:var(--tinte);margin:0 0 6px;
+  }
+  h2 em{font-style:normal;font-size:14px;color:var(--grau);margin-left:8px;font-family:var(--schrift-ui)}
+  .karte.dringend{border-color:color-mix(in srgb,var(--warn) 40%,var(--linie))}
+  .karte.dringend>h2{color:var(--warn)}
 
-  /* Aufgaben */
+  /* ---------- Aufgaben ---------- */
   ul{list-style:none;margin:0;padding:0}
-  li.auf{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--linie);cursor:pointer}
+  li.auf{display:flex;align-items:flex-start;gap:11px;padding:11px 0;cursor:pointer;
+         border-bottom:1px solid var(--linie)}
+  li.auf:last-child{border-bottom:0;padding-bottom:2px}
   .kasten{
-    flex:0 0 auto;width:20px;height:20px;margin-top:3px;border:1.5px solid var(--grau);
-    background:var(--papier);cursor:pointer;padding:0;position:relative;border-radius:3px;
+    flex:0 0 auto;width:19px;height:19px;margin-top:3px;border:1.5px solid var(--grau);
+    background:var(--feld);cursor:pointer;padding:0;position:relative;border-radius:6px;
+    transition:background .14s,border-color .14s;
   }
   .kasten::after{
-    content:"";position:absolute;left:5px;top:2px;width:6px;height:11px;
-    border:solid var(--papier);border-width:0 2px 2px 0;transform:rotate(42deg) scale(0);
+    content:"";position:absolute;left:5px;top:2px;width:5px;height:10px;
+    border:solid var(--feld);border-width:0 2px 2px 0;transform:rotate(42deg) scale(0);
     transition:transform .16s ease;
   }
   li.fertig .kasten::after{transform:rotate(42deg) scale(1)}
-  .mitte{flex:1;min-width:0}
   .kasten::before{content:"";position:absolute;left:-10px;right:-8px;top:-10px;bottom:-10px}
-  .titel{word-break:break-word}
+  .mitte{flex:1;min-width:0}
+  .titel{word-break:break-word;line-height:1.35}
   li.fertig .titel{color:var(--grau);text-decoration:line-through}
-  .unten{font-size:14px;color:var(--grau);margin-top:1px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  li.auf.istwichtig .titel{font-weight:600}
+  .unten{font-family:var(--schrift-ui);font-size:12.5px;color:var(--grau);margin-top:3px;
+         display:flex;gap:9px;flex-wrap:wrap;align-items:center}
   .bereichs-tag{display:inline-flex;align-items:center;gap:5px}
-  .punkt{width:9px;height:9px;border-radius:50%;flex:0 0 auto;display:inline-block}
+  .punkt{width:8px;height:8px;border-radius:50%;flex:0 0 auto;display:inline-block}
   .faellig.warn{color:var(--warn)}
   .faellig.heute{color:var(--tinte)}
   .notizzeichen{font-style:italic}
-  .stern{
-    flex:0 0 auto;background:none;border:0;padding:4px 2px;cursor:pointer;align-self:center;
-    color:var(--linie);line-height:0;
-  }
-  .stern svg{width:17px;height:17px;fill:currentColor}
-  .stern.an{color:#D9A400}
+
+  .stern{flex:0 0 auto;background:none;border:0;padding:4px 2px;cursor:pointer;align-self:center;
+         color:var(--linie);line-height:0}
+  .stern svg{width:16px;height:16px;fill:currentColor}
+  .stern.an{color:#C79A2E}
   .stern:hover{color:var(--grau)}
-  .stern.an:hover{color:#B98B00}
-  li.auf.istwichtig .titel{font-weight:bold}
-  .griff{
-    flex:0 0 auto;background:none;border:0;padding:6px 2px 6px 8px;cursor:grab;
-    touch-action:none;opacity:.45;align-self:center;
-  }
+  .stern.an:hover{color:#AD8524}
+
+  .griff{flex:0 0 auto;background:none;border:0;padding:6px 0 6px 6px;cursor:grab;
+         touch-action:none;opacity:.4;align-self:center;color:var(--grau)}
   .griff:active{cursor:grabbing;opacity:1}
-  .griff svg{width:15px;height:18px;display:block}
-  li.auf.zieht{opacity:.55;background:var(--feld);outline:1px dashed var(--grau);outline-offset:-1px}
+  .griff svg{width:14px;height:17px;display:block;fill:currentColor}
+  li.auf.zieht{opacity:.5;background:var(--feld);border-radius:8px}
 
-  /* Bereiche */
-  li.bereich{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--linie);cursor:pointer}
-  li.bereich .punkt{width:14px;height:14px}
-  li.bereich .nam{flex:1;font-size:20px}
-  li.bereich .anz{color:var(--grau);font-size:15px}
-  .stift{background:none;border:0;color:var(--grau);cursor:pointer;font-size:15px;padding:4px}
+  .ton{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:1px solid var(--linie);
+       background:var(--feld);cursor:pointer;display:grid;place-items:center;margin-top:1px;color:var(--tinte)}
+  .ton svg{width:11px;height:11px;fill:currentColor}
+  .ton.laeuft{background:var(--akzent);color:var(--karte);border-color:var(--akzent)}
 
-  /* Serien */
-  li.serie{padding:13px 0;border-bottom:1px solid var(--linie);cursor:pointer}
+  .kill{flex:0 0 auto;background:none;border:0;color:var(--grau);cursor:pointer;
+        font-size:19px;line-height:1;padding:2px 4px;opacity:.5}
+  .kill:hover{opacity:1;color:var(--warn)}
+
+  /* ---------- Bereiche und Serien ---------- */
+  li.bereich{display:flex;align-items:center;gap:12px;padding:12px 0;cursor:pointer;
+             border-bottom:1px solid var(--linie)}
+  li.bereich:last-child{border-bottom:0}
+  li.bereich .punkt{width:12px;height:12px}
+  li.bereich .nam{flex:1;font-size:18px}
+  li.bereich .anz{color:var(--grau);font-size:14px;font-family:var(--schrift-ui)}
+  .stift{background:none;border:0;color:var(--grau);cursor:pointer;font-size:13px;padding:4px;
+         font-family:var(--schrift-ui)}
+  .stift:hover{color:var(--tinte)}
+  li.serie{padding:12px 0;cursor:pointer;border-bottom:1px solid var(--linie)}
+  li.serie:last-child{border-bottom:0}
   li.serie .kopfz{display:flex;gap:10px;align-items:center}
   li.serie .kopfz .nam{flex:1}
 
-  .leer{padding:36px 2px;color:var(--grau)}
-  #suchfeld{margin-bottom:6px}
-  .trefferzeile{padding:13px 2px;border-bottom:1px solid var(--linie);color:var(--grau);cursor:pointer}
-  .trefferzeile:hover{color:var(--tinte)}
-  #notizfeld{
-    width:100%;min-height:calc(100vh - 300px);font-size:17px;line-height:1.5;
-    background:var(--papier);border:1px solid var(--linie);border-radius:5px;padding:14px;
-    outline:none;resize:vertical;
-  }
-  #notizfeld:focus{border-color:var(--tinte)}
+  /* ---------- Leere Zustände ---------- */
+  .leer{padding:30px 2px;color:var(--grau);font-family:var(--schrift-ui);font-size:14.5px}
+  .leer b{display:block;color:var(--tinte);font-weight:400;font-size:19px;margin-bottom:5px;
+          font-family:var(--schrift-titel)}
+  .nix{margin:0;color:var(--grau);font-size:14.5px;font-family:var(--schrift-ui)}
 
-  /* Dateien */
-  .ablage{
-    border:1.5px dashed var(--linie);border-radius:8px;padding:26px 18px;text-align:center;
-    cursor:pointer;margin-bottom:18px;transition:border-color .15s,background .15s;
-  }
-  .ablage:hover,.ablage.drueber{border-color:var(--tinte);background:var(--feld)}
-  .ablage b{display:block;font-weight:normal;font-size:20px;margin-bottom:3px}
-  .ablage span{font-size:14px;color:var(--grau)}
-  .ladezeile{padding:10px 2px;border-bottom:1px solid var(--linie);font-size:14px;color:var(--grau)}
-  .balken{height:4px;background:var(--feld);border-radius:2px;margin-top:6px;overflow:hidden}
-  .balken i{display:block;height:100%;background:var(--tinte);width:0;transition:width .2s}
-  ul.dateiliste li{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--linie)}
-  .d-mitte{flex:1;min-width:0}
-  .d-name{word-break:break-all}
-  .d-hol{background:none;border:1px solid var(--linie);border-radius:4px;padding:6px 13px;
-         font-size:15px;cursor:pointer;color:var(--tinte);flex:0 0 auto}
-  .d-hol:hover{border-color:var(--tinte)}
-  .leer b{display:block;color:var(--tinte);font-weight:normal;font-size:21px;margin-bottom:4px}
-  .zurueck{background:none;border:0;color:var(--grau);cursor:pointer;padding:0 0 10px;font-size:16px}
-  .titelzeile{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-  .titelzeile h1{font-size:26px;font-weight:normal;margin:0;flex:1}
+  .zurueck{background:none;border:0;color:var(--grau);cursor:pointer;padding:0 0 12px;
+           font-size:14px;font-family:var(--schrift-ui)}
+  .zurueck:hover{color:var(--tinte)}
+  .titelzeile{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .titelzeile h1{font-family:var(--schrift-titel);font-size:25px;font-weight:400;margin:0;flex:1}
 
+  /* ---------- Knöpfe ---------- */
   .knopf{
-    background:var(--papier);border:1px solid var(--tinte);border-radius:4px;padding:9px 16px;
-    font-size:16px;cursor:pointer;
+    background:var(--feld);border:1px solid var(--linie);border-radius:999px;padding:8px 16px;
+    font-family:var(--schrift-ui);font-size:14px;cursor:pointer;color:var(--tinte);
+    transition:border-color .12s,background .12s;
   }
-  .knopf.voll{background:var(--tinte);color:var(--papier)}
-  .knopf.leise{border-color:var(--linie);color:var(--grau)}
-  .knopfreihe{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+  .knopf:hover{border-color:var(--grau)}
+  .knopf.voll{background:var(--akzent);border-color:var(--akzent);color:#fff}
+  .knopf.voll:hover{filter:brightness(1.08)}
+  .knopf.leise{color:var(--grau)}
+  .knopf.leise:hover{color:var(--warn);border-color:var(--warn)}
+  .knopfreihe{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 
-  /* Eingabeleiste */
+  /* ---------- Eingabeleiste ---------- */
   .leiste{
-    position:fixed;left:0;right:0;bottom:0;background:var(--papier);border-top:1px solid var(--linie);
-    padding:10px 18px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:center;
+    position:fixed;left:0;right:0;bottom:0;background:var(--papier);
+    padding:10px 16px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:center;
+    border-top:1px solid var(--linie);
   }
-  .leiste-inner{width:100%;max-width:640px}
-  .ziel{display:flex;align-items:center;gap:7px;font-size:14px;color:var(--grau);
-        background:none;border:0;padding:0 0 7px;cursor:pointer}
-  .ziel em{font-style:normal;font-size:12.5px;opacity:.6;margin-left:2px}
-  .reihe{display:flex;gap:10px;align-items:center}
-  input[type=text],input[type=date],input[type=number],select,textarea{
+  .leiste-inner{width:100%;max-width:680px}
+  .ziel{display:flex;align-items:center;gap:7px;font-family:var(--schrift-ui);font-size:12.5px;
+        color:var(--grau);background:none;border:0;padding:0 0 8px;cursor:pointer}
+  .ziel em{font-style:normal;opacity:.65;margin-left:2px}
+  .reihe{display:flex;gap:9px;align-items:center}
+  input[type=text],input[type=date],input[type=time],input[type=number],select,textarea{
     width:100%;font-size:16px;background:var(--feld);border:1px solid var(--linie);
-    border-radius:4px;padding:11px 12px;outline:none;
+    border-radius:11px;padding:11px 13px;outline:none;font-family:var(--schrift-ui);
+    transition:border-color .12s;
   }
-  input:focus,select:focus,textarea:focus{border-color:var(--tinte)}
-  textarea{resize:vertical;min-height:80px;line-height:1.4}
+  .reihe input[type=text]{border-radius:999px;padding:12px 17px}
+  input:focus,select:focus,textarea:focus{border-color:var(--akzent)}
+  textarea{resize:vertical;min-height:80px;line-height:1.45}
   .mik{
-    flex:0 0 auto;width:50px;height:50px;border-radius:50%;background:var(--tinte);border:0;
-    cursor:pointer;position:relative;display:grid;place-items:center;color:var(--papier);
+    flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:var(--akzent);border:0;
+    cursor:pointer;position:relative;display:grid;place-items:center;color:#fff;
   }
-  .mik.an{color:#fff}
-  .mik svg{width:22px;height:22px;position:relative;z-index:1}
+  .mik svg{width:19px;height:19px;position:relative;z-index:1}
   .mik .welle{position:absolute;inset:0;border-radius:50%;background:var(--warn);opacity:0}
   .mik.an{background:var(--warn)}
   .mik.an .welle{animation:welle 1.5s ease-out infinite}
   @keyframes welle{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.7);opacity:0}}
-  .mitschrift{font-style:italic;color:var(--grau);min-height:0;font-size:15px;padding:0 0 6px}
+  .ton-knopf{width:42px;height:42px;background:var(--feld);border:1px solid var(--linie);color:var(--warn)}
+  .ton-knopf svg{width:15px;height:15px}
+  .ton-knopf.nimmt{background:var(--warn);border-color:var(--warn);color:#fff}
+  .mitschrift{font-style:italic;color:var(--grau);font-size:14px;padding:0 0 6px;
+              font-family:var(--schrift-ui)}
+  .aufnahmebalken{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--warn);
+                  font-style:normal;padding:0 0 8px}
+  .aufnahmebalken .pkt{width:8px;height:8px;border-radius:50%;background:var(--warn);animation:blink 1s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
 
-  /* Blatt (Dialog) */
-  .schleier{position:fixed;inset:0;background:var(--schleier);display:none;z-index:20}
+  /* ---------- Dialogblatt ---------- */
+  .schleier{position:fixed;inset:0;background:var(--schleier);display:none;z-index:20;
+            backdrop-filter:blur(2px)}
   .schleier.auf{display:block}
   .blatt{
-    position:fixed;left:0;right:0;bottom:0;background:var(--papier);z-index:21;
-    border-radius:12px 12px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));
+    position:fixed;left:0;right:0;bottom:0;background:var(--karte);z-index:21;
+    border-radius:18px 18px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));
     max-height:88vh;overflow-y:auto;transform:translateY(100%);
-    visibility:hidden;transition:transform .22s ease,visibility .22s ease;
-    box-shadow:0 -4px 24px var(--schatten);
+    visibility:hidden;transition:transform .24s cubic-bezier(.32,.72,0,1),visibility .24s;
+    box-shadow:0 -8px 32px rgba(40,36,25,.14);
   }
   .blatt.auf{transform:none;visibility:visible}
   .blatt.taub{pointer-events:none}
   @media(min-width:680px){
-    .blatt{left:50%;right:auto;bottom:auto;top:50%;width:560px;max-width:92vw;
-           transform:translate(-50%,-42%) scale(.97);opacity:0;border-radius:10px;
-           visibility:hidden;transition:transform .18s ease,opacity .18s ease,visibility .18s ease}
-    .blatt.auf{transform:translate(-50%,-50%);opacity:1;visibility:visible}
+    .blatt{left:50%;right:auto;bottom:auto;top:50%;width:540px;max-width:92vw;
+           transform:translate(-50%,-46%) scale(.98);opacity:0;border-radius:16px;
+           visibility:hidden;transition:transform .18s ease,opacity .18s ease,visibility .18s}
+    .blatt.auf{transform:translate(-50%,-50%) scale(1);opacity:1;visibility:visible}
   }
-  .blatt h3{font-size:22px;font-weight:normal;margin:0 0 16px}
-  label{display:block;font-size:14px;color:var(--grau);margin:14px 0 5px}
+  .blatt h3{font-family:var(--schrift-titel);font-size:21px;font-weight:400;margin:0 0 16px}
+  label{display:block;font-family:var(--schrift-ui);font-size:12.5px;color:var(--grau);
+        margin:16px 0 6px;letter-spacing:.02em}
   label:first-of-type{margin-top:0}
-  .farben{display:flex;gap:10px;flex-wrap:wrap}
-  .farbe{width:34px;height:34px;border-radius:50%;border:2px solid var(--papier);cursor:pointer;
+  .farben{display:flex;gap:9px;flex-wrap:wrap}
+  .farbe{width:32px;height:32px;border-radius:50%;border:2px solid var(--karte);cursor:pointer;
          box-shadow:0 0 0 1px var(--linie)}
   .farbe[aria-pressed="true"]{box-shadow:0 0 0 2px var(--tinte)}
-  .wahl{display:flex;gap:8px}
+  .wahl{display:flex;gap:7px}
   .wahl button{
-    flex:1;background:var(--papier);border:1px solid var(--linie);border-radius:5px;
-    padding:10px;font-size:16px;cursor:pointer;color:var(--grau);
+    flex:1;background:var(--feld);border:1px solid var(--linie);border-radius:11px;
+    padding:10px;font-size:15px;cursor:pointer;color:var(--grau);
   }
-  .wahl button[aria-pressed="true"]{border-color:var(--tinte);color:var(--tinte);background:var(--feld)}
-  input:disabled{color:var(--grau);opacity:.75;cursor:not-allowed}
-  .schnell{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .schnell button{background:var(--feld);border:1px solid var(--linie);border-radius:20px;
-                  padding:6px 13px;font-size:14px;cursor:pointer;color:var(--grau)}
-  .zwei{display:flex;gap:10px}
+  .wahl button[aria-pressed="true"]{border-color:var(--akzent);color:var(--akzent);background:var(--auswahl)}
+  input:disabled{color:var(--grau);opacity:.7;cursor:not-allowed}
+  .schnell{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  .schnell button{background:var(--feld);border:1px solid var(--linie);border-radius:999px;
+                  padding:6px 13px;font-family:var(--schrift-ui);font-size:13px;cursor:pointer;color:var(--grau)}
+  .schnell button:hover{color:var(--tinte);border-color:var(--grau)}
+  .zwei{display:flex;gap:9px}
   .zwei>*{flex:1}
-  .hinweis{font-size:14px;color:var(--grau);margin:10px 0 0;line-height:1.35}
-  .ton{
-    flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:1px solid var(--linie);
-    background:none;cursor:pointer;display:grid;place-items:center;margin-top:1px;color:var(--tinte);
-  }
-  .ton svg{width:13px;height:13px;fill:currentColor}
-  .ton.laeuft{background:var(--tinte);color:var(--papier);border-color:var(--tinte)}
-  .ton-knopf{width:44px;height:44px;background:none;border:1.5px solid var(--linie);color:var(--warn)}
-  .ton-knopf svg{width:16px;height:16px}
-  .ton-knopf.nimmt{background:var(--warn);border-color:var(--warn);color:#fff}
-  .aufnahmebalken{
-    display:flex;align-items:center;gap:10px;font-size:15px;color:var(--warn);padding:0 0 8px;
-  }
-  .aufnahmebalken .pkt{width:9px;height:9px;border-radius:50%;background:var(--warn);animation:blink 1s infinite}
-  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .hinweis{font-family:var(--schrift-ui);font-size:13px;color:var(--grau);margin:10px 0 0;line-height:1.45}
+
+  /* ---------- Bänder und Statuszeile ---------- */
   .band{
     position:fixed;left:0;right:0;top:0;z-index:25;display:none;
-    padding:calc(8px + env(safe-area-inset-top)) 16px 8px;text-align:center;
-    font-size:14px;background:var(--feld);color:var(--grau);border-bottom:1px solid var(--linie);
+    padding:calc(9px + env(safe-area-inset-top)) 16px 9px;text-align:center;
+    font-family:var(--schrift-ui);font-size:13px;background:var(--karte);color:var(--grau);
+    border-bottom:1px solid var(--linie);
   }
   .band.auf{display:block}
-  .band.neu{background:var(--tinte);color:var(--papier);border-bottom-color:var(--tinte)}
-  .band button{
-    margin-left:10px;background:none;border:1px solid var(--papier);color:var(--papier);
-    border-radius:4px;padding:3px 11px;font-size:14px;cursor:pointer;
-  }
+  .band.neu{background:var(--akzent);color:#fff;border-bottom-color:var(--akzent)}
+  .band button{margin-left:10px;background:none;border:1px solid rgba(255,255,255,.6);color:#fff;
+               border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer}
   .status{position:fixed;left:0;right:0;bottom:calc(96px + env(safe-area-inset-bottom));
-          text-align:center;font-size:14px;color:var(--grau);pointer-events:none;z-index:30;
-          padding:0 18px}
-  :focus-visible{outline:2px solid var(--tinte);outline-offset:2px}
+          text-align:center;font-family:var(--schrift-ui);font-size:13px;color:var(--grau);
+          pointer-events:none;z-index:30;padding:0 18px}
 
-  /* ===== Dashboard ===== */
+  /* ---------- Notizen, Suche, Dateien ---------- */
+  #notizfeld{
+    width:100%;min-height:calc(100vh - 320px);font-size:16.5px;line-height:1.6;
+    background:transparent;border:0;padding:0;outline:none;resize:none;font-family:var(--schrift);
+  }
+  #suchfeld{margin-bottom:12px;border-radius:999px;padding:12px 17px}
+  .trefferzeile{padding:12px 0;color:var(--grau);cursor:pointer;font-size:15px}
+  .trefferzeile:hover{color:var(--tinte)}
+
+  .ablage{
+    border:1.5px dashed var(--linie);border-radius:var(--rund);padding:26px 18px;text-align:center;
+    cursor:pointer;margin-bottom:14px;transition:border-color .14s,background .14s;
+  }
+  .ablage:hover,.ablage.drueber{border-color:var(--akzent);background:var(--karte)}
+  .ablage b{display:block;font-family:var(--schrift-titel);font-weight:400;font-size:19px;margin-bottom:4px}
+  .ablage span{font-family:var(--schrift-ui);font-size:13px;color:var(--grau)}
+  .ladezeile{padding:10px 0;font-family:var(--schrift-ui);font-size:13px;color:var(--grau)}
+  .balken{height:3px;background:var(--linie);border-radius:2px;margin-top:7px;overflow:hidden}
+  .balken i{display:block;height:100%;background:var(--akzent);width:0;transition:width .2s}
+  ul.dateiliste li{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid var(--linie)}
+  ul.dateiliste li:last-child{border-bottom:0}
+  .d-mitte{flex:1;min-width:0}
+  .d-name{word-break:break-all;font-size:16px}
+  .d-hol{background:var(--feld);border:1px solid var(--linie);border-radius:999px;padding:5px 13px;
+         font-family:var(--schrift-ui);font-size:13px;cursor:pointer;color:var(--tinte);flex:0 0 auto}
+  .d-hol:hover{border-color:var(--grau)}
+
+  /* ---------- Dashboard ---------- */
   .brett-kopf{display:flex;align-items:baseline;justify-content:space-between;gap:20px;
-              flex-wrap:wrap;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--linie)}
-  .brett-kopf .gross{font-size:30px;margin-right:10px}
-  .brett-kopf .klein{color:var(--grau);font-size:17px}
-  .zahlen{display:flex;gap:22px;flex-wrap:wrap}
-  .zahlen .z{color:var(--grau);font-size:15px}
-  .zahlen .z b{font-size:24px;color:var(--tinte);margin-right:5px;font-weight:normal}
+              flex-wrap:wrap;margin-bottom:20px}
+  .brett-kopf .gross{font-family:var(--schrift-titel);font-size:31px;margin-right:10px;letter-spacing:-.015em}
+  .brett-kopf .klein{color:var(--grau);font-size:16px}
+  .zahlen{display:flex;gap:20px;flex-wrap:wrap;font-family:var(--schrift-ui)}
+  .zahlen .z{color:var(--grau);font-size:13px}
+  .zahlen .z b{font-family:var(--schrift-titel);font-size:23px;color:var(--tinte);margin-right:6px;font-weight:400}
   .zahlen .z.warn b{color:var(--warn)}
-  .zahlen .z.gut b{color:#1E8449}
-  .raster{display:flex;gap:18px;align-items:flex-start}
-  .spalte{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:18px}
-  .kachel{border:1px solid var(--linie);border-radius:8px;padding:15px 17px 13px;background:var(--papier)}
-  .kachel.dringend{border-color:var(--warn)}
-  .kachel h3{margin:0 0 9px;font-size:14px;font-weight:normal;font-variant:small-caps;
-             letter-spacing:.08em;color:var(--grau)}
+  .zahlen .z.gut b{color:var(--gut)}
+  .raster{display:flex;gap:14px;align-items:flex-start}
+  .spalte{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:14px}
+  .kachel{border:1px solid var(--linie);border-radius:var(--rund);padding:15px 17px 14px;
+          background:var(--karte);box-shadow:var(--schatten)}
+  .kachel.dringend{border-color:color-mix(in srgb,var(--warn) 40%,var(--linie))}
+  .kachel h3{margin:0 0 10px;font-family:var(--schrift-ui);font-size:11.5px;font-weight:600;
+             text-transform:uppercase;letter-spacing:.09em;color:var(--grau)}
   .kachel.dringend h3{color:var(--warn)}
-  .kachel .nix{margin:0;color:var(--grau);font-size:15px}
-  .kachel .zeile{margin:0;font-size:16px;line-height:1.4;white-space:pre-wrap;cursor:pointer}
-  ul.knapp{list-style:none;margin:0;padding:0}
-  ul.knapp li{display:flex;align-items:center;gap:9px;padding:6px 0;cursor:pointer;
+  .kachel .zeile{margin:0;font-size:15.5px;line-height:1.5;white-space:pre-wrap;cursor:pointer}
+  ul.knapp li{display:flex;align-items:center;gap:9px;padding:7px 0;cursor:pointer;
               border-bottom:1px solid var(--linie)}
   ul.knapp li:last-child{border-bottom:0;padding-bottom:0}
-  ul.knapp .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px}
-  ul.knapp .n{flex:0 0 auto;color:var(--grau);font-size:13.5px}
-  ul.knapp .kasten{width:17px;height:17px;margin-top:0}
-  ul.knapp .ton{width:24px;height:24px;margin-top:0}
-  ul.knapp .ton svg{width:11px;height:11px}
-  .ministern{color:#D9A400;margin-right:5px}
+  ul.knapp .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15.5px}
+  ul.knapp .n{flex:0 0 auto;color:var(--grau);font-size:12.5px;font-family:var(--schrift-ui)}
+  ul.knapp .kasten{width:16px;height:16px;margin-top:0}
+  ul.knapp .kasten::after{left:4px;top:2px;width:4px;height:8px}
+  ul.knapp .ton{width:23px;height:23px;margin-top:0}
+  ul.knapp .ton svg{width:10px;height:10px}
+  .ministern{color:#C79A2E;margin-right:5px}
   .rahmen.weit{max-width:none}
 
-  /* ===== Desktop: Seitenleiste statt Reiter ===== */
+  /* ---------- Rechner: Seitenleiste ---------- */
   @media(min-width:900px){
     body{padding:0;height:100vh;overflow:hidden;align-items:stretch}
-    .rahmen{max-width:1180px;height:100vh;display:flex}
+    .rahmen{max-width:1240px;height:100vh;display:flex}
     .haupt{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh}
-    .wrap{flex:1;min-height:0;overflow-y:auto;padding:30px 34px 40px;max-width:none}
+    .wrap{flex:1;min-height:0;overflow-y:auto;padding:32px 36px 44px;max-width:none}
+    .rahmen.weit .wrap{padding:32px 36px 44px}
     .kopf,nav{display:none}
     aside{
-      display:flex;flex-direction:column;flex:0 0 246px;width:246px;height:100vh;
-      border-right:1px solid var(--linie);padding:30px 20px 20px;overflow-y:auto;
+      display:flex;flex-direction:column;flex:0 0 232px;width:232px;height:100vh;
+      border-right:1px solid var(--linie);padding:30px 14px 18px;overflow-y:auto;
     }
-    .s-logo{text-align:center;margin-bottom:26px;cursor:pointer}
-    .s-logo span{font-size:30px;line-height:1;display:block}
-    .s-logo i{display:block;height:1.5px;background:var(--tinte);margin:5px auto 0;width:64%}
+    .s-logo{cursor:pointer;font-family:var(--schrift-titel);font-size:25px;letter-spacing:.16em;
+            padding:0 10px;margin-bottom:28px;line-height:1}
     .s-nav{display:flex;flex-direction:column;gap:1px}
     .s-nav button{
-      display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;
-      border:0;padding:8px 10px;border-radius:5px;cursor:pointer;font-size:17px;color:var(--tinte);
+      display:flex;align-items:center;gap:11px;width:100%;text-align:left;background:none;
+      border:0;padding:8px 10px;border-radius:9px;cursor:pointer;font-size:16px;color:var(--tinte);
+      font-family:var(--schrift-ui);transition:background .12s;
     }
-    .s-nav button:hover{background:var(--feld)}
-    .s-nav button[aria-current="true"]{background:var(--auswahl)}
+    .s-nav button:hover{background:var(--karte)}
+    .s-nav button[aria-current="true"]{background:var(--auswahl);color:var(--akzent)}
+    .s-nav button .sym{flex:0 0 auto;width:17px;height:17px;color:var(--grau);line-height:0}
+    .s-nav button .sym svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;
+                           stroke-linecap:round;stroke-linejoin:round}
+    .s-nav button[aria-current="true"] .sym{color:var(--akzent)}
     .s-nav button .nam{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .s-nav button em{font-style:normal;font-size:14px;color:var(--grau)}
+    .s-nav button em{font-style:normal;font-size:13px;color:var(--grau)}
     .s-titel{
-      display:flex;align-items:center;justify-content:space-between;margin:24px 0 6px;padding:0 10px;
-      font-size:14px;font-variant:small-caps;letter-spacing:.08em;color:var(--grau);
+      display:flex;align-items:center;justify-content:space-between;margin:26px 0 7px;padding:0 10px;
+      font-family:var(--schrift-ui);font-size:11px;font-weight:600;text-transform:uppercase;
+      letter-spacing:.09em;color:var(--grau);
     }
-    .s-titel button{background:none;border:0;cursor:pointer;color:var(--grau);font-size:19px;line-height:1;padding:0 4px}
-    .s-fuss{margin-top:auto;padding-top:18px;border-top:1px solid var(--linie)}
-    .s-fuss button{background:none;border:0;cursor:pointer;color:var(--grau);font-size:15px;padding:6px 10px;text-align:left;width:100%;border-radius:5px}
-    .s-fuss button:hover{background:var(--feld);color:var(--tinte)}
-    .leiste{position:static;padding:14px 34px 20px;flex:0 0 auto}
+    .s-titel button{background:none;border:0;cursor:pointer;color:var(--grau);font-size:17px;
+                    line-height:1;padding:0 4px}
+    .s-titel button:hover{color:var(--tinte)}
+    .s-fuss{margin-top:auto;padding-top:16px;border-top:1px solid var(--linie)}
+    .s-fuss button{background:none;border:0;cursor:pointer;color:var(--grau);font-size:14px;
+                   padding:7px 10px;text-align:left;width:100%;border-radius:9px;font-family:var(--schrift-ui)}
+    .s-fuss button:hover{background:var(--karte);color:var(--tinte)}
+    .leiste{position:static;padding:12px 36px 22px;flex:0 0 auto;border-top:1px solid var(--linie)}
     .leiste-inner{max-width:none}
-    .status{bottom:auto;top:16px;right:24px;left:auto;text-align:right}
-    .rahmen.weit .wrap{padding:30px 34px 40px}
-    #notizfeld{min-height:calc(100vh - 190px)}
-    h2:first-child{margin-top:0}
+    .status{bottom:auto;top:18px;right:26px;left:auto;text-align:right}
+    #notizfeld{min-height:calc(100vh - 230px)}
   }
+
+  :focus-visible{outline:2px solid var(--akzent);outline-offset:2px}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -352,9 +412,13 @@
 <div class="wrap">
   <div class="kopf">
     <div class="logo" id="logo" role="button" tabindex="0" title="Zur Startansicht">
-      <span>To do</span><i></i>
+      <span>To do</span>
     </div>
-    <button class="zahn" id="btn-einst" aria-label="Einstellungen">&#9881;</button>
+    <button class="zahn" id="btn-einst" aria-label="Einstellungen">
+      <svg viewBox="0 0 20 20" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10" cy="10" r="2.6"/>
+        <path d="M10 2.6v1.8M10 15.6v1.8M17.4 10h-1.8M4.4 10H2.6M15.2 4.8l-1.3 1.3M6.1 13.9l-1.3 1.3M15.2 15.2l-1.3-1.3M6.1 6.1 4.8 4.8"/>
+      </svg></button>
   </div>
 
   <nav id="nav"></nav>
@@ -406,7 +470,7 @@ const DOC_KEY='todo.doc.v1', CFG_KEY='todo.cfg.v1';
 const FARBEN=['#B03A2E','#CA6F1E','#B7950B','#1E8449','#0E8074','#1F6FB2','#34495E','#6C3483','#A5468B','#5D6D7E'];
 
 let doc={bereiche:[],aufgaben:[],vorlagen:[],notiz:{text:'',ts:0},dateien:[]};
-let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell',schrift:'times',vapid:'',push:false};
+let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell',schrift:'serif',vapid:'',push:false};
 let ansicht='heute', offenerBereich=null, notizUhr=null;
 
 try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[],notiz:(d.notiz&&typeof d.notiz==='object')?d.notiz:{text:'',ts:0},dateien:d.dateien||[]}; }catch(e){}
@@ -420,7 +484,7 @@ const sichern=()=>{ LS.setItem(DOC_KEY,JSON.stringify(doc)); LS.setItem(CFG_KEY,
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function setzeSchrift(s){
-  cfg.schrift=['sans','georgia'].includes(s)?s:'times';
+  cfg.schrift=['sans','times'].includes(s)?s:'serif';
   document.documentElement.setAttribute('data-schrift',cfg.schrift);
   sichern();
 }
@@ -429,7 +493,7 @@ function setzeThema(t){
   cfg.thema=(t==='dunkel')?'dunkel':'hell';
   document.documentElement.setAttribute('data-thema',cfg.thema);
   const m=document.querySelector('meta[name="theme-color"]');
-  if(m) m.setAttribute('content',cfg.thema==='dunkel'?'#131313':'#FFFFFF');
+  if(m) m.setAttribute('content',cfg.thema==='dunkel'?'#15150F':'#F1F0EA');
   sichern();
 }
 
@@ -451,73 +515,13 @@ function fmtFaellig(iso){
   return new Date(iso+'T12:00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short',year:tageBis(iso)>330?'numeric':undefined});
 }
 
-/* ============ Datumserkennung im Text ============ */
-const ZAHLWORT={ein:1,einer:1,einem:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,zwoelf:12,vierzehn:14};
-function zahl(s){ if(!s) return null; s=s.toLowerCase(); return /^\d+$/.test(s)?parseInt(s,10):(ZAHLWORT[s]??null); }
-
-function erkenneDatum(roh){
-  let text=' '+roh+' ', faellig=null, zeit=null;
-  const weg=re=>{ const m=text.match(re); if(m){ text=text.replace(m[0],' '); return m; } return null; };
-  const zahlM='(\\d{1,2}|ein|einer|einem|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwoelf|vierzehn)';
-  let m;
-
-  /* Uhrzeit zuerst, damit "um 8" nicht mit "am 8." verwechselt wird */
-  const STUNDE={ein:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,zwoelf:12};
-  const stundeM='(\\d{1,2}|ein|eins|zwei|drei|vier|fünf|fuenf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwoelf)';
-  const spaet=/abends|nachmittags|nachmittag|abend/i.test(text);
-  let h=null,min=0;
-  if((m=weg(/\sum\s+(\d{1,2})[:.](\d{2})\s*(uhr)?\s/i))){ h=+m[1]; min=+m[2]; }
-  else if((m=weg(new RegExp('\\s(um\\s+)?halb\\s+'+stundeM+'\\s','i')))){
-    const z=/^\d+$/.test(m[2])?+m[2]:STUNDE[m[2].toLowerCase()];
-    if(z){ h=(z===1?12:z-1); min=30; }
-  }
-  else if((m=weg(new RegExp('\\sum\\s+'+stundeM+'\\s+uhr\\s+drei(ss|ß)ig\\s','i')))){ h=/^\d+$/.test(m[1])?+m[1]:STUNDE[m[1].toLowerCase()]; min=30; }
-  else if((m=weg(new RegExp('\\sum\\s+'+stundeM+'\\s*uhr\\s','i')))){ h=/^\d+$/.test(m[1])?+m[1]:STUNDE[m[1].toLowerCase()]; }
-  else if((m=weg(/\sum\s+(\d{1,2})\s/i))){ h=+m[1]; }
-  if(h!==null&&h>=0&&h<=23){
-    if(spaet&&h<12) h+=12;
-    weg(/\s(abends|nachmittags|nachmittag|abend|morgens|vormittags|früh)\s/i);
-    zeit=String(h).padStart(2,'0')+':'+String(min).padStart(2,'0');
-  }
-
-  if((m=weg(/\s(am\s+)?(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})?\s/i))){
-    const t=+m[2], mo=+m[3]; let j=m[4]?(m[4].length===2?2000+ +m[4]:+m[4]):new Date().getFullYear();
-    let iso=`${j}-${String(mo).padStart(2,'0')}-${String(t).padStart(2,'0')}`;
-    if(!m[4] && tageBis(iso)<0) iso=`${j+1}-${String(mo).padStart(2,'0')}-${String(t).padStart(2,'0')}`;
-    faellig=iso;
-  }
-  else if((m=weg(/\s(am\s+)(\d{1,2})\.(?!\d)\s/i))){
-    const t=+m[2], n=new Date(); let mo=n.getMonth(), j=n.getFullYear();
-    let iso=`${j}-${String(mo+1).padStart(2,'0')}-${String(t).padStart(2,'0')}`;
-    if(tageBis(iso)<0){ mo++; if(mo>11){mo=0;j++;} iso=`${j}-${String(mo+1).padStart(2,'0')}-${String(t).padStart(2,'0')}`; }
-    faellig=iso;
-  }
-  else if(weg(/\sübermorgen\s/i)) faellig=plusTage(isoHeute(),2);
-  else if(weg(/\s(heute\s+abend|heute)\s/i)) faellig=isoHeute();
-  else if(weg(/\s(morgen\s+früh|morgen\s+abend|morgen)\s/i)) faellig=plusTage(isoHeute(),1);
-  else if((m=weg(new RegExp('\\sin\\s+'+zahlM+'\\s+wochen?\\s','i')))) { const n=zahl(m[1]); if(n) faellig=plusTage(isoHeute(),7*n); }
-  else if((m=weg(new RegExp('\\sin\\s+'+zahlM+'\\s+tagen?\\s','i')))) { const n=zahl(m[1]); if(n) faellig=plusTage(isoHeute(),n); }
-  else if(weg(/\s(nächste|naechste|kommende)\s+woche\s/i)) faellig=plusTage(isoHeute(),7);
-  else if((m=weg(/\s(am\s+|nächsten\s+|naechsten\s+|kommenden\s+)?(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend|sonntag)\s/i))){
-    const namen={montag:1,dienstag:2,mittwoch:3,donnerstag:4,freitag:5,samstag:6,sonnabend:6,sonntag:0};
-    const ziel=namen[m[2].toLowerCase()], heute=new Date().getDay();
-    let diff=(ziel-heute+7)%7; if(diff===0) diff=7;
-    faellig=plusTage(isoHeute(),diff);
-  }
-
-  text=text.replace(/\s+/g,' ').trim().replace(/^(und|dann|bis|am|noch|um)\s+/i,'').replace(/[,;]+$/,'').trim();
-  if(zeit&&!faellig) faellig=isoHeute();
-  return {text,faellig,zeit};
-}
-
 /* ============ Anlegen / Ändern ============ */
 function aufgabeAnlegen(roh,bereichId){
   let t=String(roh||'').replace(/\s+/g,' ').trim().replace(/[.]+$/,'');
   if(t.length<2) return null;
-  const {text,faellig,zeit}=erkenneDatum(t);
-  if(text.length<2) return null;
+  const text=t;
   const minPos=Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0));
-  const a={ id:uid(), text:text.charAt(0).toUpperCase()+text.slice(1), notiz:'', faellig, zeit:zeit||null,
+  const a={ id:uid(), text:text.charAt(0).toUpperCase()+text.slice(1), notiz:'', faellig:null, zeit:null,
             wichtig:false, ton:null,
             erledigt:false, erledigtAm:null, bereichId:bereichId??cfg.ziel??null,
             vorlageId:null, pos:minPos-10, ts:jetzt(), geloescht:false };
@@ -818,6 +822,20 @@ function zeichneNav(){
 }
 function amRechner(){ return window.matchMedia('(min-width:900px)').matches; }
 
+/* Schlichte Strichsymbole für die Seitenleiste */
+const SYMBOLE={
+  start:'<path d="M3 10.5 10 4l7 6.5"/><path d="M5 9.5V16h10V9.5"/>',
+  heute:'<rect x="3" y="4.5" width="14" height="12.5" rx="2"/><path d="M3 8.5h14M7 3v3M13 3v3"/>',
+  alle:'<path d="M7 5.5h10M7 10h10M7 14.5h10"/><path d="M3.5 5.5h.01M3.5 10h.01M3.5 14.5h.01"/>',
+  suche:'<circle cx="9" cy="9" r="5.2"/><path d="M12.8 12.8 17 17"/>',
+  notizen:'<path d="M5 3h7l3.5 3.5V17H5z"/><path d="M12 3v3.5h3.5"/><path d="M7.5 10h5M7.5 13h3.5"/>',
+  serien:'<path d="M4 10a6 6 0 0 1 10.3-4.2L16 7.5"/><path d="M16 10a6 6 0 0 1-10.3 4.2L4 12.5"/><path d="M16 4v3.5h-3.5M4 16v-3.5h3.5"/>',
+  erledigt:'<circle cx="10" cy="10" r="6.5"/><path d="M7 10.2l2 2L13.2 8"/>',
+  dateien:'<path d="M3.5 6a1.5 1.5 0 0 1 1.5-1.5h3l1.5 2h6A1.5 1.5 0 0 1 17 8v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 15z"/>',
+  bereiche:'<rect x="3.5" y="3.5" width="6" height="6" rx="1.5"/><rect x="11" y="3.5" width="6" height="6" rx="1.5"/><rect x="3.5" y="11" width="6" height="6" rx="1.5"/><rect x="11" y="11" width="6" height="6" rx="1.5"/>'
+};
+const sym=n=>`<span class="sym"><svg viewBox="0 0 20 20">${SYMBOLE[n]||''}</svg></span>`;
+
 /* Die Kacheln werden auf Spalten verteilt und rücken dabei nach oben nach.
    Ein starres Raster würde neben einer hohen Kachel Leerraum stehen lassen. */
 const KACHEL_MIN=310, KACHEL_LUECKE=18;
@@ -855,10 +873,10 @@ function zeichneSeite(){
   const ohneN=offene.filter(a=>!bereichVon(a.bereichId)).length;
   const pkt=f=>`<span class="punkt" style="background:${esc(f)}"></span>`;
   const eintrag=(v,label,zahl,farbe)=>
-    `<button data-v="${v}" aria-current="${ansicht===v}">${farbe?pkt(farbe):''}<span class="nam">${esc(label)}</span>${zahl!==null?`<em>${zahl}</em>`:''}</button>`;
+    `<button data-v="${v}" aria-current="${ansicht===v}">${farbe?pkt(farbe):sym(v)}<span class="nam">${esc(label)}</span>${zahl!==null?`<em>${zahl}</em>`:''}</button>`;
 
   $('seite').innerHTML=
-    `<div class="s-logo" id="s-logo"><span>To do</span><i></i></div>
+    `<div class="s-logo" id="s-logo">To do</div>
      <div class="s-nav">
        ${eintrag('start','Dashboard',null,null)}
        ${eintrag('heute','Heute',heuteN,null)}
@@ -871,10 +889,10 @@ function zeichneSeite(){
      <div class="s-titel">Bereiche<button id="s-plus" title="Bereich anlegen">+</button></div>
      <div class="s-nav">
        ${bs.map(b=>`<button data-b="${b.id}" aria-current="${ansicht==='bereich'&&offenerBereich===b.id}">
-          ${pkt(b.farbe)}<span class="nam">${esc(b.name)}</span><em>${offene.filter(a=>a.bereichId===b.id).length}</em></button>`).join('')}
+          <span class="sym">${pkt(b.farbe)}</span><span class="nam">${esc(b.name)}</span><em>${offene.filter(a=>a.bereichId===b.id).length}</em></button>`).join('')}
        ${ohneN?`<button data-b="__ohne" aria-current="${ansicht==='bereich'&&offenerBereich==='__ohne'}">
-          ${pkt('#B8B8B8')}<span class="nam">Ohne Bereich</span><em>${ohneN}</em></button>`:''}
-       ${bs.length?`<button data-v="bereiche" aria-current="${ansicht==='bereiche'}"><span class="nam" style="color:var(--grau)">Bereiche verwalten</span></button>`:''}
+          <span class="sym">${pkt('#B8B8B8')}</span><span class="nam">Ohne Bereich</span><em>${ohneN}</em></button>`:''}
+       ${bs.length?`<button data-v="bereiche" aria-current="${ansicht==='bereiche'}"><span class="sym"></span><span class="nam" style="color:var(--grau)">Bereiche verwalten</span></button>`:''}
      </div>
      <div class="s-fuss">
        <button id="s-dateien" aria-current="${ansicht==='dateien'}">Dateien${aktiv(doc.dateien).length?' ('+aktiv(doc.dateien).length+')':''}</button>
@@ -891,6 +909,12 @@ function zeichneSeite(){
     else { offenerBereich=null; setzeAnsicht(b.dataset.v); }
   });
 }
+
+/* Jeder Abschnitt sitzt in einer eigenen Karte. */
+function karte(titel,inhalt,extra){
+  return `<section class="karte${extra||''}">${titel?`<h2>${titel}</h2>`:''}${inhalt}</section>`;
+}
+function zahlAn(n){ return `<em>${n}</em>`; }
 
 function aufgabenHtml(liste,zeigeBereich){
   return '<ul>'+liste.map(a=>{
@@ -1010,9 +1034,9 @@ function zeichnen(){
     const ohne=sortiert(offene.filter(a=>!a.faellig));
     let h='';
     const ueber=sortiert(faellig.filter(a=>tageBis(a.faellig)<0)), heut=sortiert(faellig.filter(a=>tageBis(a.faellig)===0));
-    if(ueber.length) h+='<h2>Überfällig</h2>'+aufgabenHtml(ueber,true);
-    if(heut.length) h+='<h2>Heute</h2>'+aufgabenHtml(heut,true);
-    if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
+    if(ueber.length) h+=karte('Überfällig'+zahlAn(ueber.length),aufgabenHtml(ueber,true),' dringend');
+    if(heut.length) h+=karte('Heute'+zahlAn(heut.length),aufgabenHtml(heut,true));
+    if(ohne.length) h+=karte('Ohne Datum'+zahlAn(ohne.length),aufgabenHtml(ohne,true));
     c.innerHTML=h||`<div class="leer"><b>Nichts zu tun.</b>Keine Aufgabe ist heute fällig.</div>`;
     bindeAufgaben();
   }
@@ -1025,11 +1049,11 @@ function zeichnen(){
       if(t<0) grp.ueber.push(a); else if(t===0) grp.heute.push(a); else if(t<=7) grp.woche.push(a); else grp.spaeter.push(a); });
     Object.keys(grp).forEach(k=>grp[k]=sortiert(grp[k]));
     let h='';
-    if(grp.ueber.length) h+='<h2>Überfällig</h2>'+aufgabenHtml(grp.ueber,true);
-    if(grp.heute.length) h+='<h2>Heute</h2>'+aufgabenHtml(grp.heute,true);
-    if(ohne.length) h+='<h2>Ohne Datum</h2>'+aufgabenHtml(ohne,true);
-    if(grp.woche.length) h+='<h2>Diese Woche</h2>'+aufgabenHtml(grp.woche,true);
-    if(grp.spaeter.length) h+='<h2>Später</h2>'+aufgabenHtml(grp.spaeter,true);
+    if(grp.ueber.length) h+=karte('Überfällig'+zahlAn(grp.ueber.length),aufgabenHtml(grp.ueber,true),' dringend');
+    if(grp.heute.length) h+=karte('Heute'+zahlAn(grp.heute.length),aufgabenHtml(grp.heute,true));
+    if(ohne.length) h+=karte('Ohne Datum'+zahlAn(ohne.length),aufgabenHtml(ohne,true));
+    if(grp.woche.length) h+=karte('Diese Woche'+zahlAn(grp.woche.length),aufgabenHtml(grp.woche,true));
+    if(grp.spaeter.length) h+=karte('Später'+zahlAn(grp.spaeter.length),aufgabenHtml(grp.spaeter,true));
     c.innerHTML=h||`<div class="leer"><b>Liste ist leer.</b>Unten eintippen oder das Mikrofon drücken.</div>`;
     bindeAufgaben();
   }
@@ -1038,19 +1062,19 @@ function zeichnen(){
     const bs=aktiv(doc.bereiche);
     let h='';
     if(bs.length){
-      h+='<ul>'+bs.map(b=>{
+      h+=karte('Bereiche','<ul>'+bs.map(b=>{
         const n=offene.filter(a=>a.bereichId===b.id).length;
         return `<li class="bereich" data-id="${b.id}">
           <span class="punkt" style="background:${esc(b.farbe)}"></span>
           <span class="nam">${esc(b.name)}</span>
           <span class="anz">${n}</span>
           <button class="stift" data-edit="${b.id}" aria-label="Bearbeiten">bearbeiten</button>
-        </li>`;}).join('')+'</ul>';
+        </li>`;}).join('')+'</ul>');
     }
     const ohneN=offene.filter(a=>!bereichVon(a.bereichId)).length;
-    if(ohneN) h+=`<ul><li class="bereich" data-id="__ohne">
+    if(ohneN) h+=karte('',`<ul><li class="bereich" data-id="__ohne">
         <span class="punkt" style="background:#B8B8B8"></span>
-        <span class="nam">Ohne Bereich</span><span class="anz">${ohneN}</span></li></ul>`;
+        <span class="nam">Ohne Bereich</span><span class="anz">${ohneN}</span></li></ul>`);
     if(!h) h=`<div class="leer"><b>Noch keine Bereiche.</b>Zum Beispiel Arbeit, Privat, Studium.</div>`;
     h+=`<div class="knopfreihe"><button class="knopf voll" id="neu-bereich">Bereich anlegen</button></div>`;
     c.innerHTML=h;
@@ -1079,13 +1103,13 @@ function zeichnen(){
 
   else if(ansicht==='serien'){
     const vs=aktiv(doc.vorlagen).sort((x,y)=>(x.naechster||'')<(y.naechster||'')?-1:1);
-    let h=vs.length?'<ul>'+vs.map(v=>{
+    let h=vs.length?karte('Wiederkehrend'+zahlAn(vs.length),'<ul>'+vs.map(v=>{
       const b=bereichVon(v.bereichId);
       return `<li class="serie" data-id="${v.id}">
         <div class="kopfz"><span class="punkt" style="background:${esc(b?b.farbe:'#B8B8B8')}"></span>
         <span class="nam">${esc(v.text)}</span></div>
         <div class="unten">${esc(rhythmusText(v.rhythmus))} &middot; nächster Termin ${esc(new Date(v.naechster+'T12:00:00').toLocaleDateString('de-DE'))} &middot; erscheint ${v.vorlauf??7} Tage vorher</div>
-      </li>`;}).join('')+'</ul>'
+      </li>`;}).join('')+'</ul>')
       :`<div class="leer"><b>Keine Serien.</b>Wiederkehrendes wird hier gepflegt und taucht erst kurz vor dem Termin in der Liste auf.</div>`;
     h+=`<div class="knopfreihe"><button class="knopf voll" id="neu-serie">Serie anlegen</button></div>`;
     c.innerHTML=h;
@@ -1096,8 +1120,8 @@ function zeichnen(){
   else if(ansicht==='notizen'){
     const feld=$('notizfeld');
     if(feld&&document.activeElement===feld){ zeichneZiel(); return; }
-    c.innerHTML=`<textarea id="notizfeld" placeholder="Hier ist Platz für alles, was keine Aufgabe ist – Telefonnummern, Ideen, Einkaufszettel, Gedanken.&#10;&#10;Der Text bleibt stehen, bis du ihn selbst löschst."></textarea>
-      <p class="hinweis" id="notizstand">Wird automatisch gespeichert.</p>`;
+    c.innerHTML=karte('',`<textarea id="notizfeld" placeholder="Hier ist Platz für alles, was keine Aufgabe ist – Telefonnummern, Ideen, Einkaufszettel, Gedanken.&#10;&#10;Der Text bleibt stehen, bis du ihn selbst löschst."></textarea>
+      <p class="hinweis" id="notizstand">Wird automatisch gespeichert.</p>`);
     const t=$('notizfeld');
     t.value=(doc.notiz&&doc.notiz.text)||'';
     t.addEventListener('input',()=>{
@@ -1133,7 +1157,7 @@ function zeichnen(){
          </div>
          ${laufend.map(p=>`<div class="ladezeile"><span>Wird übertragen …</span>
             <div class="balken"><i data-balken="${p}" style="width:${ladeStand[p]}%"></i></div></div>`).join('')}
-         ${ds.length?'<ul class="dateiliste">'+ds.map(d=>`
+         ${ds.length?karte('In der Ablage'+zahlAn(ds.length),'<ul class="dateiliste">'+ds.map(d=>`
            <li data-id="${d.id}">
              <div class="d-mitte">
                <div class="d-name">${esc(d.name)}</div>
@@ -1141,7 +1165,7 @@ function zeichnen(){
              </div>
              <button class="d-hol" data-hol="${d.id}" title="Herunterladen">Laden</button>
              <button class="kill" data-weg="${d.id}" aria-label="Löschen">&times;</button>
-           </li>`).join('')+'</ul>'
+           </li>`).join('')+'</ul>')
           :`<div class="leer"><b>Keine Dateien.</b>Alles, was du hier ablegst, erscheint auf dem anderen Gerät und wird nach 24 Stunden automatisch gelöscht.</div>`}
          <p class="hinweis">Dateien verschwinden 24 Stunden nach dem Hochladen von selbst – vorausgesetzt, die App wird in der Zwischenzeit einmal geöffnet. Nichts Vertrauliches ablegen: Wer die Adresse einer Datei kennt, kann sie ohne Passwort abrufen.</p>`;
 
@@ -1231,18 +1255,18 @@ function zeichnen(){
       const fertig=aktiv(doc.aufgaben).filter(a=>a.erledigt&&(passt(a.text)||passt(a.notiz)));
       const serien=aktiv(doc.vorlagen).filter(v=>passt(v.text)||passt(v.notiz));
       const notizTreffer=passt(doc.notiz&&doc.notiz.text);
-      if(offen.length) h+='<h2>Offen ('+offen.length+')</h2>'+aufgabenHtml(sortiert(offen),true);
-      if(fertig.length) h+='<h2>Erledigt ('+fertig.length+')</h2>'+aufgabenHtml(fertig,true);
-      if(serien.length) h+='<h2>Serien</h2><ul>'+serien.map(v=>{
+      if(offen.length) h+=karte('Offen'+zahlAn(offen.length),aufgabenHtml(sortiert(offen),true));
+      if(fertig.length) h+=karte('Erledigt'+zahlAn(fertig.length),aufgabenHtml(fertig,true));
+      if(serien.length) h+=karte('Serien','<ul>'+serien.map(v=>{
         const b=bereichVon(v.bereichId);
         return `<li class="serie" data-id="${v.id}"><div class="kopfz">
           <span class="punkt" style="background:${esc(b?b.farbe:'#B8B8B8')}"></span>
           <span class="nam">${esc(v.text)}</span></div>
           <div class="unten">${esc(rhythmusText(v.rhythmus))} &middot; ${esc(new Date(v.naechster+'T12:00:00').toLocaleDateString('de-DE'))}</div></li>`;
-      }).join('')+'</ul>';
+      }).join('')+'</ul>');
       if(notizTreffer){
         const t=doc.notiz.text, i=t.toLowerCase().indexOf(q);
-        h+='<h2>Notizen</h2><div class="trefferzeile" id="zur-notiz">…'+esc(t.slice(Math.max(0,i-60),i+120))+'…</div>';
+        h+=karte('Notizen','<div class="trefferzeile" id="zur-notiz">…'+esc(t.slice(Math.max(0,i-60),i+120))+'…</div>');
       }
       if(!offen.length&&!fertig.length&&!serien.length&&!notizTreffer)
         h+=`<div class="leer"><b>Nichts gefunden.</b>Für „${esc(suchbegriff)}“ gibt es keinen Treffer.</div>`;
@@ -1258,7 +1282,7 @@ function zeichnen(){
 
   else if(ansicht==='erledigt'){
     const fertig=aktiv(doc.aufgaben).filter(a=>a.erledigt).sort((x,y)=>(y.erledigtAm||0)-(x.erledigtAm||0));
-    c.innerHTML=(fertig.length?aufgabenHtml(fertig,true):`<div class="leer"><b>Noch nichts abgehakt.</b></div>`)
+    c.innerHTML=(fertig.length?karte('Erledigt'+zahlAn(fertig.length),aufgabenHtml(fertig,true)):`<div class="leer"><b>Noch nichts abgehakt.</b></div>`)
       +(fertig.length?`<div class="knopfreihe"><button class="knopf leise" id="weg">Erledigte entfernen</button></div>`:'');
     bindeAufgaben();
     if(fertig.length) $('weg').onclick=()=>{ fertig.forEach(a=>{a.geloescht=true;a.ts=jetzt();}); geaendert(); };
@@ -1723,9 +1747,9 @@ $('btn-einst').onclick=()=>{
     </div>
     <label>Schrift</label>
     <div class="wahl">
-      <button data-s="times"   aria-pressed="${cfg.schrift==='times'}"   style="font-family:'Times New Roman',Times,serif">Times</button>
-      <button data-s="georgia" aria-pressed="${cfg.schrift==='georgia'}" style="font-family:Georgia,serif">Georgia</button>
-      <button data-s="sans"    aria-pressed="${cfg.schrift==='sans'}"    style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">Serifenlos</button>
+      <button data-s="serif" aria-pressed="${cfg.schrift!=='times'&&cfg.schrift!=='sans'}" style="font-family:'Iowan Old Style',Georgia,serif">Serif</button>
+      <button data-s="times" aria-pressed="${cfg.schrift==='times'}" style="font-family:'Times New Roman',Times,serif">Times</button>
+      <button data-s="sans"  aria-pressed="${cfg.schrift==='sans'}"  style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">Serifenlos</button>
     </div>
     <label>Sicherungskopie</label>
     <div class="schnell"><button id="e-exp">Als Datei sichern</button><button id="e-imp">Datei laden</button></div>

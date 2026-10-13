@@ -5,7 +5,7 @@
    Vorteil: Die Aufgabentexte laufen nie über fremde Push-Server. */
 
 const CFG_CACHE = 'todo-cfg-v1';
-const APP_CACHE = 'todo-app-v3';
+const APP_CACHE = 'todo-app-v4';
 const DATEIEN = ['./', './index.html', './manifest.json',
                  './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
@@ -159,9 +159,12 @@ async function abhaken(id) {
   if (!a || a.erledigt) return;
   a.erledigt = true;
   a.erledigtAm = Date.now();
+  a.v = (a.v || 0) + 1;      // Änderungszähler hoch, sonst verliert die Erledigung
   a.ts = Date.now();
-  /* Serien rücken beim nächsten Öffnen der App automatisch weiter. */
-  await rpc(cfg, 'sync_push', { p_code: cfg.code, p_doc: dok });
+  /* Nur die eine geänderte Aufgabe senden – die Datenbank führt selbst zusammen,
+     damit nichts überschrieben wird, was zwischenzeitlich am Rechner entstand.
+     Serien rücken beim nächsten Öffnen der App automatisch weiter. */
+  await rpc(cfg, 'sync_merge', { p_code: cfg.code, p_doc: { aufgaben: [a] } });
 }
 
 self.addEventListener('notificationclick', e => {

@@ -470,8 +470,9 @@ const DOC_KEY='todo.doc.v1', CFG_KEY='todo.cfg.v1';
 const FARBEN=['#B03A2E','#CA6F1E','#B7950B','#1E8449','#0E8074','#1F6FB2','#34495E','#6C3483','#A5468B','#5D6D7E'];
 
 let doc={bereiche:[],aufgaben:[],vorlagen:[],notiz:{text:'',ts:0},dateien:[]};
-let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell',schrift:'serif',vapid:'',push:false};
+let cfg={url:'',key:'',code:'',ziel:null,ansicht:'heute',thema:'hell',schrift:'serif',vapid:'',push:false,stand:''};
 let ansicht='heute', offenerBereich=null, notizUhr=null;
+let erledigtGrenze=100;
 
 try{ const d=JSON.parse(LS.getItem(DOC_KEY)); if(d&&typeof d==='object') doc={bereiche:d.bereiche||[],aufgaben:d.aufgaben||[],vorlagen:d.vorlagen||[],notiz:(d.notiz&&typeof d.notiz==='object')?d.notiz:{text:'',ts:0},dateien:d.dateien||[]}; }catch(e){}
 try{ const c=JSON.parse(LS.getItem(CFG_KEY)); if(c&&typeof c==='object') cfg=Object.assign(cfg,c); }catch(e){}
@@ -480,11 +481,47 @@ const $=id=>document.getElementById(id);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const jetzt=()=>Date.now();
 const aktiv=liste=>liste.filter(x=>!x.geloescht);
-const sichern=()=>{ LS.setItem(DOC_KEY,JSON.stringify(doc)); LS.setItem(CFG_KEY,JSON.stringify(cfg)); };
+let speicherVoll=false;
+const sichern=()=>{
+  try{
+    LS.setItem(DOC_KEY,JSON.stringify(doc));
+    LS.setItem(CFG_KEY,JSON.stringify(cfg));
+    speicherVoll=false;
+  }catch(e){
+    /* Der Browserspeicher ist voll. Weiterarbeiten geht, nur das Sichern nicht –
+       deshalb hier abfangen statt die laufende Bedienung mitzureissen. */
+    if(!speicherVoll){
+      speicherVoll=true;
+      try{ melde('Browserspeicher voll – bitte unter Einstellungen aufräumen.',7000); }catch(x){}
+    }
+  }
+};
 /* Jede Änderung erhöht einen Zähler. Er entscheidet beim Abgleich, welche
    Fassung die neuere ist – anders als die Uhrzeit ist er nicht davon abhängig,
    ob die Uhren von Handy und Rechner gleich gehen. */
-function stempel(r){ if(!r) return r; r.v=(r.v||0)+1; r.ts=jetzt(); return r; }
+function stempel(r){ if(!r) return r; r.v=(r.v||0)+1; r.ts=jetzt(); merken(r.id); return r; }
+
+/* Welche Datensaetze haben sich seit dem letzten erfolgreichen Abgleich
+   geaendert? null heisst "unbekannt" – dann geht sicherheitshalber alles raus. */
+let geaendertIds=null, notizGeaendert=false;
+function merken(id){ if(geaendertIds&&id) geaendertIds.add(id); }
+
+/* Loeschmarkierungen aelter als 90 Tage haben ihren Zweck erfuellt: beide
+   Geraete haben die Loeschung laengst gesehen. Sie belasten nur noch den
+   Speicher und jede Uebertragung.
+   Entscheidend ist 'gts' – den setzt der Server, wenn er die Markierung zum
+   ersten Mal sieht. Ohne gts (noch nicht abgeglichen) wird nichts entfernt. */
+const GRABSTEIN_MS=90*86400000;
+function putzeAlt(){
+  const grenze=jetzt()-GRABSTEIN_MS; let weg=0;
+  ['bereiche','aufgaben','vorlagen','dateien'].forEach(k=>{
+    if(!Array.isArray(doc[k])) return;
+    const vorher=doc[k].length;
+    doc[k]=doc[k].filter(x=>!(x&&x.geloescht&&x.gts&&x.gts<grenze));
+    weg+=vorher-doc[k].length;
+  });
+  return weg;
+}
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -529,7 +566,8 @@ function aufgabeAnlegen(roh,bereichId){
   const a={ id:uid(), text:text.charAt(0).toUpperCase()+text.slice(1), notiz:'', faellig:null, zeit:null,
             wichtig:false, ton:null,
             erledigt:false, erledigtAm:null, bereichId:bereichId??cfg.ziel??null,
-            vorlageId:null, pos:minPos-10, v:1, ts:jetzt(), geloescht:false };
+            vorlageId:null, pos:minPos-10, geloescht:false };
+  stempel(a);
   doc.aufgaben.unshift(a);
   geaendert();
   return a;
@@ -610,7 +648,8 @@ function serienPruefen(){
     const a={ id, text:v.text, notiz:v.notiz||'', faellig:v.naechster, erledigt:false, erledigtAm:null,
               bereichId:v.bereichId, vorlageId:v.id,
               pos:Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0))-10,
-              v:1, ts:jetzt(), geloescht:false };
+              geloescht:false };
+    stempel(a);
     doc.aufgaben.unshift(a); v.aktivInstanz=a.id; stempel(v); neu=true;
   });
   return neu;
@@ -651,12 +690,16 @@ function hochladen(datei,dauerhaft,fertig){
   const endung=(datei.name.match(/\.[a-z0-9]{1,8}$/i)||[''])[0].toLowerCase();
   const pfad=uid()+Math.random().toString(36).slice(2,10)+endung;
   const eintrag={ id:uid(), name:datei.name, groesse:datei.size, typ:datei.type||'',
-                  pfad, hoch:jetzt(), v:1, ts:jetzt(), geloescht:false,
+                  pfad, hoch:jetzt(), geloescht:false,
                   dauerhaft:!!dauerhaft };
+  stempel(eintrag);
   ladeStand[pfad]=0;
   if(ansicht==='dateien') zeichnen();
 
   const xhr=new XMLHttpRequest();
+  xhr.timeout=180000;   // drei Minuten, danach gilt der Versuch als gescheitert
+  xhr.ontimeout=()=>{ delete ladeStand[pfad]; if(ansicht==='dateien') zeichnen();
+    melde('Zeitüberschreitung beim Hochladen.',4500); if(fertig) fertig(null); };
   xhr.open('POST', basisUrl()+'/storage/v1/object/'+EIMER+'/'+pfad);
   xhr.setRequestHeader('apikey',cfg.key);
   xhr.setRequestHeader('Authorization','Bearer '+cfg.key);
@@ -784,10 +827,10 @@ function tonSpeichern(blob,dauer){
   hochladen(datei,true,eintrag=>{
     if(!eintrag) return;
     const minPos=Math.min(0,...doc.aufgaben.filter(x=>!x.geloescht&&!x.erledigt).map(x=>x.pos??0));
-    doc.aufgaben.unshift({ id:uid(), text:'Sprachnotiz ('+dauerText(dauer)+')', notiz:'',
+    doc.aufgaben.unshift(stempel({ id:uid(), text:'Sprachnotiz ('+dauerText(dauer)+')', notiz:'',
       faellig:null, zeit:null, wichtig:false, ton:eintrag.id, tonDauer:dauer,
       erledigt:false, erledigtAm:null, bereichId:cfg.ziel??null, vorlageId:null,
-      pos:minPos-10, v:1, ts:jetzt(), geloescht:false });
+      pos:minPos-10, geloescht:false }));
     geaendert();
     melde('Sprachnotiz angelegt.',2500);
   });
@@ -869,7 +912,7 @@ window.addEventListener('resize',()=>{
   stapelUhr=setTimeout(()=>{ if(ansicht==='start') zeichnen(); },150);
 });
 
-function setzeAnsicht(v){ ansicht=v; cfg.ansicht=(v==='bereich'?'bereiche':v); sichern(); zeichnen(); }
+function setzeAnsicht(v){ if(v!=='erledigt') erledigtGrenze=100; ansicht=v; cfg.ansicht=(v==='bereich'?'bereiche':v); sichern(); zeichnen(); }
 
 function zeichneSeite(){
   const offene=aktiv(doc.aufgaben).filter(a=>!a.erledigt);
@@ -1025,6 +1068,47 @@ function nachOben(a){
   a.pos=min-10; stempel(a); geaendert();
 }
 
+const SUCH_GRENZE=60;     // mehr Treffer bringen keinen Erkenntnisgewinn
+let suchUhr=null;
+
+function sucheZeichnen(){
+  const ziel=$('suchergebnis');
+  if(!ziel) return;
+  const q=suchbegriff.trim().toLowerCase();
+  if(q.length<2){
+    ziel.innerHTML=`<div class="leer"><b>Wonach suchst du?</b>Durchsucht offene und erledigte Aufgaben, Notizen und Serien.</div>`;
+    return;
+  }
+  const passt=t=>String(t||'').toLowerCase().includes(q);
+  const offen=aktiv(doc.aufgaben).filter(a=>!a.erledigt&&(passt(a.text)||passt(a.notiz)));
+  const fertig=aktiv(doc.aufgaben).filter(a=>a.erledigt&&(passt(a.text)||passt(a.notiz)));
+  const serien=aktiv(doc.vorlagen).filter(v=>passt(v.text)||passt(v.notiz));
+  const notizTreffer=passt(doc.notiz&&doc.notiz.text);
+  const kappe=(liste)=>liste.length>SUCH_GRENZE?liste.slice(0,SUCH_GRENZE):liste;
+  const mehr=(liste)=>liste.length>SUCH_GRENZE
+    ? `<p class="hinweis">Es werden ${SUCH_GRENZE} von ${liste.length} Treffern gezeigt – Suchbegriff genauer fassen.</p>` : '';
+
+  let h='';
+  if(offen.length) h+=karte('Offen'+zahlAn(offen.length),aufgabenHtml(kappe(sortiert(offen)),true)+mehr(offen));
+  if(fertig.length) h+=karte('Erledigt'+zahlAn(fertig.length),aufgabenHtml(kappe(fertig),true)+mehr(fertig));
+  if(serien.length) h+=karte('Serien','<ul>'+serien.map(v=>{
+    const b=bereichVon(v.bereichId);
+    return `<li class="serie" data-id="${v.id}"><div class="kopfz">
+      <span class="punkt" style="background:${esc(b?b.farbe:'#B8B8B8')}"></span>
+      <span class="nam">${esc(v.text)}</span></div>
+      <div class="unten">${esc(rhythmusText(v.rhythmus))} &middot; ${esc(new Date(v.naechster+'T12:00:00').toLocaleDateString('de-DE'))}</div></li>`;
+  }).join('')+'</ul>');
+  if(notizTreffer){
+    const t=doc.notiz.text, i=t.toLowerCase().indexOf(q);
+    h+=karte('Notizen','<div class="trefferzeile" id="zur-notiz">…'+esc(t.slice(Math.max(0,i-60),i+120))+'…</div>');
+  }
+  if(!h) h=`<div class="leer"><b>Nichts gefunden.</b>Für „${esc(suchbegriff)}" gibt es keinen Treffer.</div>`;
+  ziel.innerHTML=h;
+  bindeAufgaben();
+  ziel.querySelectorAll('li.serie').forEach(li=>li.onclick=()=>blattSerie(doc.vorlagen.find(v=>v.id===li.dataset.id)));
+  if($('zur-notiz')) $('zur-notiz').onclick=()=>setzeAnsicht('notizen');
+}
+
 function zeichnen(){
   if(serienPruefen()) sichern();
   if(ansicht==='start'&&!amRechner()) ansicht='heute';
@@ -1133,14 +1217,14 @@ function zeichnen(){
       clearTimeout(notizUhr);
       $('notizstand').textContent='Wird gespeichert …';
       notizUhr=setTimeout(()=>{
-        doc.notiz={text:t.value,ts:jetzt()};
+        doc.notiz={text:t.value,ts:jetzt()}; notizGeaendert=true;
         sichern(); planeSync();
         $('notizstand').textContent='Gespeichert um '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
       },700);
     });
     t.addEventListener('blur',()=>{
       clearTimeout(notizUhr);
-      if(t.value!==((doc.notiz&&doc.notiz.text)||'')){ doc.notiz={text:t.value,ts:jetzt()}; sichern(); planeSync(); }
+      if(t.value!==((doc.notiz&&doc.notiz.text)||'')){ doc.notiz={text:t.value,ts:jetzt()}; notizGeaendert=true; sichern(); planeSync(); }
     });
   }
 
@@ -1250,47 +1334,34 @@ function zeichnen(){
   }
 
   else if(ansicht==='suche'){
-    const q=suchbegriff.trim().toLowerCase();
-    let h=`<input type="text" id="suchfeld" placeholder="Aufgaben und Notizen durchsuchen" value="${esc(suchbegriff)}" autocomplete="off">`;
-    if(q.length<2){
-      h+=`<div class="leer"><b>Wonach suchst du?</b>Durchsucht offene und erledigte Aufgaben, Notizen und Serien.</div>`;
-    }else{
-      const passt=t=>String(t||'').toLowerCase().includes(q);
-      const offen=aktiv(doc.aufgaben).filter(a=>!a.erledigt&&(passt(a.text)||passt(a.notiz)));
-      const fertig=aktiv(doc.aufgaben).filter(a=>a.erledigt&&(passt(a.text)||passt(a.notiz)));
-      const serien=aktiv(doc.vorlagen).filter(v=>passt(v.text)||passt(v.notiz));
-      const notizTreffer=passt(doc.notiz&&doc.notiz.text);
-      if(offen.length) h+=karte('Offen'+zahlAn(offen.length),aufgabenHtml(sortiert(offen),true));
-      if(fertig.length) h+=karte('Erledigt'+zahlAn(fertig.length),aufgabenHtml(fertig,true));
-      if(serien.length) h+=karte('Serien','<ul>'+serien.map(v=>{
-        const b=bereichVon(v.bereichId);
-        return `<li class="serie" data-id="${v.id}"><div class="kopfz">
-          <span class="punkt" style="background:${esc(b?b.farbe:'#B8B8B8')}"></span>
-          <span class="nam">${esc(v.text)}</span></div>
-          <div class="unten">${esc(rhythmusText(v.rhythmus))} &middot; ${esc(new Date(v.naechster+'T12:00:00').toLocaleDateString('de-DE'))}</div></li>`;
-      }).join('')+'</ul>');
-      if(notizTreffer){
-        const t=doc.notiz.text, i=t.toLowerCase().indexOf(q);
-        h+=karte('Notizen','<div class="trefferzeile" id="zur-notiz">…'+esc(t.slice(Math.max(0,i-60),i+120))+'…</div>');
-      }
-      if(!offen.length&&!fertig.length&&!serien.length&&!notizTreffer)
-        h+=`<div class="leer"><b>Nichts gefunden.</b>Für „${esc(suchbegriff)}“ gibt es keinen Treffer.</div>`;
+    /* Das Eingabefeld wird nur einmal aufgebaut. Frueher zeichnete jeder
+       Tastendruck die ganze Ansicht neu – bei langen Listen spuerbar zaeh. */
+    if(!$('suchfeld')){
+      c.innerHTML=`<input type="text" id="suchfeld" placeholder="Aufgaben und Notizen durchsuchen" value="${esc(suchbegriff)}" autocomplete="off">
+                   <div id="suchergebnis"></div>`;
+      const feld=$('suchfeld');
+      feld.oninput=()=>{ suchbegriff=feld.value; clearTimeout(suchUhr);
+                         suchUhr=setTimeout(sucheZeichnen,180); };
+      feld.focus();
     }
-    c.innerHTML=h;
-    const feld=$('suchfeld');
-    feld.oninput=()=>{ suchbegriff=feld.value; const pos=feld.selectionStart; zeichnen();
-      const neu=$('suchfeld'); if(neu){ neu.focus(); try{neu.setSelectionRange(pos,pos);}catch(e){} } };
-    bindeAufgaben();
-    c.querySelectorAll('li.serie').forEach(li=>li.onclick=()=>blattSerie(doc.vorlagen.find(v=>v.id===li.dataset.id)));
-    if($('zur-notiz')) $('zur-notiz').onclick=()=>setzeAnsicht('notizen');
+    sucheZeichnen();
   }
 
   else if(ansicht==='erledigt'){
     const fertig=aktiv(doc.aufgaben).filter(a=>a.erledigt).sort((x,y)=>(y.erledigtAm||0)-(x.erledigtAm||0));
-    c.innerHTML=(fertig.length?karte('Erledigt'+zahlAn(fertig.length),aufgabenHtml(fertig,true)):`<div class="leer"><b>Noch nichts abgehakt.</b></div>`)
-      +(fertig.length?`<div class="knopfreihe"><button class="knopf leise" id="weg">Erledigte entfernen</button></div>`:'');
+    /* Nur die juengsten zeichnen. Alles auf einmal dauert bei einem Jahr
+       Nutzung spuerbar lange und niemand liest so weit zurueck. */
+    const zeige=fertig.slice(0,erledigtGrenze);
+    c.innerHTML=(fertig.length
+        ? karte('Erledigt'+zahlAn(fertig.length),aufgabenHtml(zeige,true)
+            +(fertig.length>zeige.length?`<p class="hinweis">${zeige.length} von ${fertig.length} gezeigt.</p>`:''))
+        : `<div class="leer"><b>Noch nichts abgehakt.</b></div>`)
+      +(fertig.length?`<div class="knopfreihe">
+          ${fertig.length>zeige.length?'<button class="knopf" id="mehr">Weitere anzeigen</button>':''}
+          <button class="knopf leise" id="weg">Erledigte entfernen</button></div>`:'');
     bindeAufgaben();
-    if(fertig.length) $('weg').onclick=()=>{ fertig.forEach(a=>{a.geloescht=true;stempel(a);}); geaendert(); };
+    if($('mehr')) $('mehr').onclick=()=>{ erledigtGrenze+=100; zeichnen(); };
+    if(fertig.length) $('weg').onclick=()=>{ fertig.forEach(a=>{a.geloescht=true;stempel(a);}); erledigtGrenze=100; geaendert(); };
   }
 
   $('leiste').style.display=(ansicht==='heute'||ansicht==='alle'||ansicht==='bereich')?'flex':'none';
@@ -1424,7 +1495,7 @@ function blattBereich(b){
   });
   $('b-ok').onclick=()=>{
     const n=$('b-name').value.trim(); if(!n) return;
-    if(neu){ const nb={id:uid(),name:n,farbe:gewaehlt,v:1, ts:jetzt(), geloescht:false}; doc.bereiche.push(nb); if(!cfg.ziel) cfg.ziel=nb.id; }
+    if(neu){ const nb=stempel({id:uid(),name:n,farbe:gewaehlt,geloescht:false}); doc.bereiche.push(nb); if(!cfg.ziel) cfg.ziel=nb.id; }
     else { b.name=n; b.farbe=gewaehlt; stempel(b); }
     blattZu(); geaendert();
   };
@@ -1576,16 +1647,27 @@ function diktatAus(nurBeenden){
 let syncTimer=null, syncLaeuft=false;
 function planeSync(){ clearTimeout(syncTimer); syncTimer=setTimeout(sync,1500); }
 
-async function rpc(fn,body){
+/* Mit Abbruch nach 20 Sekunden. Ohne das kann eine haengende Mobilfunk-
+   verbindung den Abgleich dauerhaft blockieren: der naechste Versuch sieht
+   den noch laufenden und kehrt sofort um. */
+async function rpc(fn,body,frist){
   const basis=cfg.url.replace(/\/+$/,'');
-  const r=await fetch(basis+'/rest/v1/rpc/'+fn,{
-    method:'POST',
-    headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
-  if(!r.ok) throw new Error(await r.text());
-  const t=await r.text();
-  return t?JSON.parse(t):null;
+  const abbruch=new AbortController();
+  const uhr=setTimeout(()=>abbruch.abort(),frist||20000);
+  try{
+    const r=await fetch(basis+'/rest/v1/rpc/'+fn,{
+      method:'POST',
+      headers:{'apikey':cfg.key,'Authorization':'Bearer '+cfg.key,'Content-Type':'application/json'},
+      body:JSON.stringify(body),
+      signal:abbruch.signal
+    });
+    if(!r.ok) throw new Error(await r.text());
+    const t=await r.text();
+    return t?JSON.parse(t):null;
+  }catch(e){
+    if(e&&e.name==='AbortError') throw new Error('Zeitueberschreitung');
+    throw e;
+  }finally{ clearTimeout(uhr); }
 }
 /* Welche von zwei Fassungen desselben Datensatzes ist die neuere?
    Zuerst zaehlt der Aenderungszaehler, dann die Uhrzeit, zuletzt ein
@@ -1595,7 +1677,9 @@ function neuer(x,y){
   if(vx!==vy) return vx>vy;
   const tx=x.ts||0, ty=y.ts||0;
   if(tx!==ty) return tx>ty;
-  return fest(x)>fest(y);
+  /* Voellig gleichauf: die zuletzt eingereihte Fassung nehmen. Beim Abgleich
+     ist das die vom Server – so uebernehmen beide Geraete dessen Stand. */
+  return true;
 }
 function fest(o){ try{ return JSON.stringify(o,Object.keys(o).sort()); }catch(e){ return ''; } }
 
@@ -1609,29 +1693,59 @@ async function sync(still){
   if(!cfg.url||!cfg.key||!cfg.code||syncLaeuft) return;
   if(!navigator.onLine){ if(!still) melde('Kein Netz – wird nachgeholt.',3000); return; }
   syncLaeuft=true;
+
+  /* Was jetzt rausgeht, gilt als unterwegs. Aenderungen waehrend des Wartens
+     landen in der neuen Merkliste und gehen beim naechsten Mal mit. */
+  const warIds=geaendertIds, warNotiz=notizGeaendert, warStand=cfg.stand||null;
+  const vollstaendig=!warIds||!warStand;
+  let sendung;
+  if(vollstaendig){
+    sendung=doc;
+  }else{
+    sendung={ bereiche:doc.bereiche.filter(x=>warIds.has(x.id)),
+              aufgaben:doc.aufgaben.filter(x=>warIds.has(x.id)),
+              vorlagen:doc.vorlagen.filter(x=>warIds.has(x.id)),
+              dateien: doc.dateien.filter(x=>warIds.has(x.id)) };
+    if(warNotiz) sendung.notiz=doc.notiz;
+  }
+  geaendertIds=new Set(); notizGeaendert=false;
+
   try{
-    /* Ein einziger Aufruf: die Datenbank fuehrt zusammen und gibt das Ergebnis
-       zurueck. Frueher las und schrieb die App getrennt – dazwischen konnte das
-       andere Geraet schreiben, und dessen Aenderungen gingen verloren. */
-    const fern=await rpc('sync_merge',{p_code:cfg.code,p_doc:doc})||{};
+    const fern=await rpc('sync_merge',
+      {p_code:cfg.code,p_doc:sendung,p_stand:warStand})||{};
 
-    /* Was waehrend des Austauschs hier getippt wurde, hat einen hoeheren
-       Zaehler und setzt sich beim erneuten Zusammenfuehren durch. */
-    doc.bereiche=verschmelze(doc.bereiche,fern.bereiche);
-    doc.aufgaben=verschmelze(doc.aufgaben,fern.aufgaben);
-    doc.vorlagen=verschmelze(doc.vorlagen,fern.vorlagen);
-    doc.dateien=verschmelze(doc.dateien,fern.dateien);
-    if(fern.notiz&&typeof fern.notiz==='object'&&(fern.notiz.ts||0)>((doc.notiz&&doc.notiz.ts)||0)) doc.notiz=fern.notiz;
-
-    serienPruefen(); sichern(); zeichnen();
+    if(fern.gleich){
+      /* Der Server kennt genau den Stand, den dieses Geraet schon hat.
+         Dann gibt es nichts zusammenzufuehren und nichts zu zeichnen. */
+      cfg.stand=fern.stand||warStand;
+      sichern();
+    }else{
+      doc.bereiche=verschmelze(doc.bereiche,fern.bereiche);
+      doc.aufgaben=verschmelze(doc.aufgaben,fern.aufgaben);
+      doc.vorlagen=verschmelze(doc.vorlagen,fern.vorlagen);
+      doc.dateien=verschmelze(doc.dateien,fern.dateien);
+      if(fern.notiz&&typeof fern.notiz==='object'&&(fern.notiz.ts||0)>((doc.notiz&&doc.notiz.ts)||0)) doc.notiz=fern.notiz;
+      putzeAlt();
+      cfg.stand=fern.stand||'';
+      serienPruefen(); sichern(); zeichnen();
+    }
     swKonfigSenden();
     if(!still) melde('Abgeglichen um '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),2500);
     dateienAufraeumen();
   }catch(e){
+    /* Fehlgeschlagen: die Merkliste zurueckgeben, damit nichts verlorengeht.
+       Im Zweifel beim naechsten Versuch wieder alles senden. */
+    if(warIds&&geaendertIds) warIds.forEach(id=>geaendertIds.add(id));
+    else geaendertIds=null;
+    if(warNotiz) notizGeaendert=true;
+    if(vollstaendig) cfg.stand='';
+
     const t=String(e&&e.message||e);
-    melde(/sync_merge|404|PGRST202/.test(t)
-      ? 'Abgleich noch nicht aktualisiert – bitte sync_fix.sql in Supabase ausführen.'
-      : 'Abgleich fehlgeschlagen. Einstellungen prüfen.',6000);
+    melde(/sync_merge|PGRST202|does not exist|42883/.test(t)
+      ? 'Abgleich noch nicht aktualisiert – bitte sync_fix2.sql in Supabase ausführen.'
+      : /Zeitueberschreitung/.test(t)
+        ? 'Abgleich dauerte zu lange – wird erneut versucht.'
+        : 'Abgleich fehlgeschlagen. Einstellungen prüfen.',5000);
   }finally{ syncLaeuft=false; }
 }
 
@@ -1875,7 +1989,9 @@ function blattZugang(){
   $('e-ok').onclick=()=>{
     const u=$('e-url').value.trim(), k=$('e-key').value.trim(), co=$('e-code').value.trim();
     if(co&&co.length<12) return melde('Der Sync-Code muss mindestens 12 Zeichen haben.',4000);
+    const wechsel=(cfg.url!==u||cfg.code!==co);
     cfg.url=u; cfg.key=k; cfg.code=co; cfg.vapid=$('e-vapid').value.trim();
+    if(wechsel){ cfg.stand=''; geaendertIds=null; notizGeaendert=true; }
     sichern(); blattZu();
     if(cfg.url&&cfg.key&&cfg.code) sync(); else melde('Gespeichert. Abgleich ist noch nicht eingerichtet.',3000);
   };
@@ -1901,6 +2017,7 @@ $('datei').onchange=e=>{
   setzeThema(cfg.thema);
   setzeSchrift(cfg.schrift);
   doc.aufgaben.forEach((a,i)=>{ if(typeof a.pos!=='number') a.pos=i*10; });
+  if(putzeAlt()) sichern();
   const p=new URLSearchParams(location.search);
   const geteilt=[p.get('title'),p.get('text'),p.get('url')].filter(Boolean).join(' ').trim();
   if(geteilt){ aufgabeAnlegen(geteilt,cfg.ziel); history.replaceState({},'',location.pathname); }
